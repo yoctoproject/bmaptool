@@ -1,0 +1,57 @@
+name: Debian packages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-debs:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-20.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [
+          x64_buster,
+          x64_bullseye,
+          x64_bookworm
+        ]
+
+        include:
+          - name: x64_buster
+            dist: buster
+
+          - name: x64_bullseye
+            dist: bullseye
+
+          - name: x64_bookworm
+            dist: bookworm
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install deps and update debian changelog
+        run: |
+          sudo apt-get update
+          sudo apt-get install devscripts
+          debchange -v "`git describe --tags | sed -e "s|v||" -e "s|-g|+g|"`-${{ matrix.dist }}" -b -M --distribution ${{ matrix.dist }} "ci build"
+
+      - name: Build deb packages
+        uses: jtdor/build-deb-action@v1
+        env:
+          DEB_BUILD_OPTIONS: noautodbgsym
+        with:
+          docker-image: "debian:${{ matrix.dist }}-slim"
+          buildpackage-opts: --build=binary --no-sign
+          extra-build-deps: git
+
+      - name: Upload deb files
+        uses: actions/upload-artifact@v3
+        with:
+          name: "deb-packages"
+          path: ./debian/artifacts/*.deb

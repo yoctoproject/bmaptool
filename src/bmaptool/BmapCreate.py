@@ -48,8 +48,9 @@ This module uses the FIEMAP ioctl to detect holes.
 # pylint: disable=R0902,R0903
 
 import hashlib
-from .BmapHelpers import human_size
-from . import Filemap
+
+from bmaptool.BmapHelpers import human_size
+from bmaptool import Filemap
 
 # The bmap format version we generate.
 #

@@ -34,7 +34,8 @@ import array
 import fcntl
 import tempfile
 import logging
-from . import BmapHelpers
+
+from bmaptool import BmapHelpers
 
 _log = logging.getLogger(__name__)  # pylint: disable=C0103
 

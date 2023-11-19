@@ -33,11 +33,9 @@ import logging
 import threading
 import subprocess
 import netrc
-import http.client
-import urllib.error
-import urllib.parse
-import urllib.request
-from . import BmapHelpers
+
+from six.moves.urllib import parse as urlparse
+from bmaptool import BmapHelpers
 
 _log = logging.getLogger(__name__)  # pylint: disable=C0103
 

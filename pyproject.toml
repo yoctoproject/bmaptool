@@ -1,11 +1,20 @@
+[build-system]  # these versions are valid on python 3.7 and up
+requires = [
+    "setuptools>=61",
+    "setuptools_scm>=7",
+]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "bmaptool"
 description = "BMAP tools"
 dynamic = ["version"]
 dependencies = [
+    "defusedxml",
     "gpg >= 1.10.0",
+    'importlib-metadata>=4.6; python_version < "3.10"',
 ]
-required-python = ">= 3.8"
+requires-python = ">=3.8"
 authors = [
     {name = "Joshua Watt", email = "JPEWhacker@gmail.com"},
     {name = "Trevor Woerner", email = "twoerner@gmail.com"},
@@ -32,18 +41,93 @@ dev = [
     "black >= 22.3.0",
     "six >= 1.16.0",
 ]
+cov = [
+    "coverage",
+    "coverage_python_version",
+]
+doc = [
+    "sphinx",
+    "sphinx_git",
+    "recommonmark",
+    "sphinx_rtd_theme",
+    "sphinxcontrib-apidoc",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+]
 
 [project.urls]
 Homepage = "https://github.com/yoctoproject/bmaptool"
 Repository = "https://github.com/yoctoproject/bmaptool.git"
 Issues = "https://github.com/yoctoproject/bmaptool/issues"
+Changelog = "https://github.com/yoctoproject/bmaptool/blob/master/CHANGELOG.md"
 
 [project.scripts]
 bmaptool = "bmaptool.CLI:main"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.setuptools_scm]
 
-[tool.hatch.version]
-path = "src/bmaptool/CLI.py"
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests", "src/bmaptool",]
+log_cli =  false
+doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE",]
+addopts = "-ra -q -p no:warnings"
+markers = "subscript"
+
+[tool.coverage.run]
+branch = true
+source = ["src/bmaptool"]
+plugins = ["coverage_python_version"]
+
+[tool.coverage.paths]
+source = [
+    "src/",
+    "*/site-packages"
+]
+
+[tool.coverage.report]
+fail_under = 40
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "raise AssertionError",
+    "if typing.TYPE_CHECKING:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.black]
+line-length = 90
+skip-string-normalization = true
+include = '\.py$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | docs
+  | dist
+  | tests
+)/
+'''
+
+[tool.pycln]
+all = true
+
+[tool.isort]
+line_length = 72
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.bandit]
+exclude_dirs = ["docs"]

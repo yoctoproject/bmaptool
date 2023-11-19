@@ -1,44 +1,60 @@
----
-name: Test bmaptool
+name: CI
 
 on:
-  - push
-  - pull_request
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [ main ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  build:
+
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      OS: ${{ matrix.os }}
+      PYTHON: ${{ matrix.python-version }}
+      PYTHONIOENCODING: utf-8
+      PIP_DOWNLOAD_CACHE: ${{ github.workspace }}/../.pip_download_cache
     strategy:
       matrix:
-        python-version:
-          - "3.8"
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
+        os: [ubuntu-20.04, macos-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y pbzip2 pigz lzop liblz4-tool libgpgme11-dev
-          python -m pip install --upgrade pip
-          pip install build
-      - name: Build package
-        run: |
-          python -m build
-      - name: Install package
-        run: |
-          pip install -e .[dev]
-      - name: Run tests
-        run: |
-          python -m unittest -vb
+    - name: Set git crlf/eol
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: psf/black@stable
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get -qq update
+        sudo apt-get install -y libgpgme-dev
+
+    - name: Macos dependencies
+      if: runner.os == 'MacOS'
+      run: |
+        brew install gpgme
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install tox tox-gh-actions
+
+    - name: Run tests
+      run: |
+        tox
+      env:
+        PLATFORM: ${{ matrix.os }}

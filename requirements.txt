@@ -1,0 +1,12 @@
+defusedxml
+gpg
+# dev tasks
+six
+pytest
+pytest-cov
+pylint
+mypy
+isort
+flake8
+black
+bandit

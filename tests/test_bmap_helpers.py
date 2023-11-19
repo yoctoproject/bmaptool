@@ -20,18 +20,14 @@ This test verifies 'BmapHelpers' module functionality.
 
 import os
 import sys
+import platform
 import tempfile
+from unittest.mock import patch
+from tempfile import TemporaryDirectory
 
-try:
-    from unittest.mock import patch
-except ImportError:  # for Python < 3.3
-    from mock import patch
-try:
-    from tempfile import TemporaryDirectory
-except ImportError:  # for Python < 3.2
-    from backports.tempfile import TemporaryDirectory
+import pytest
+
 from bmaptool import BmapHelpers
-
 
 # This is a work-around for Centos 6
 try:
@@ -43,6 +39,10 @@ except ImportError:
 class TestBmapHelpers(unittest.TestCase):
     """The test class for these unit tests."""
 
+    @pytest.mark.skipif(
+        platform.system().lower() in ["darwin", "windows"],
+        reason="test is for Linux only",
+    )
     def test_get_file_system_type(self):
         """Check a file system type is returned when used with a file"""
 
@@ -60,6 +60,10 @@ class TestBmapHelpers(unittest.TestCase):
         with self.assertRaises(BmapHelpers.Error):
             BmapHelpers.get_file_system_type(fobj)
 
+    @pytest.mark.skipif(
+        platform.system().lower() in ["darwin", "windows"],
+        reason="test is for Linux only",
+    )
     def test_get_file_system_type_symlink(self):
         """Check a file system type is returned when used with a symlink"""
 
