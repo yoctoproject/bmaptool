@@ -668,8 +668,6 @@ class TransRead(object):
         necessary.
         """
 
-        if size < 0:
-            size = 0xFFFFFFFFFFFFFFFF
         buf = self._f_objs[-1].read(size)
         self._pos += len(buf)
 
