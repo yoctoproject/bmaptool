@@ -664,12 +664,10 @@ class TransRead(object):
 
     def read(self, size=-1):
         """
-        Read the data from the file or URL and and uncompress it on-the-fly if
+        Read the data from the file or URL and uncompress it on-the-fly if
         necessary.
         """
 
-        if size < 0:
-            size = 0xFFFFFFFFFFFFFFFF
         buf = self._f_objs[-1].read(size)
         self._pos += len(buf)
 
