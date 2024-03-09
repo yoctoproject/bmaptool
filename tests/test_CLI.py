@@ -21,7 +21,6 @@ import subprocess
 import sys
 import tempfile
 import tests.helpers
-import gpg
 import shutil
 
 
@@ -39,10 +38,14 @@ class TestCLI(unittest.TestCase):
                 self.tmpfile,
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             check=False,
         )
-        self.assertEqual(completed_process.returncode, 0, completed_process.stdout)
+        self.assertEqual(completed_process.returncode, 0)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"successfully verified bmap file signature", completed_process.stderr
+        )
 
     def test_unknown_signer(self):
         completed_process = subprocess.run(
@@ -57,10 +60,12 @@ class TestCLI(unittest.TestCase):
                 self.tmpfile,
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             check=False,
         )
-        self.assertEqual(completed_process.returncode, 1, completed_process.stdout)
+        self.assertEqual(completed_process.returncode, 1)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(b"discovered a BAD GPG signature", completed_process.stderr)
 
     def test_wrong_signature(self):
         completed_process = subprocess.run(
@@ -75,10 +80,12 @@ class TestCLI(unittest.TestCase):
                 self.tmpfile,
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             check=False,
         )
-        self.assertEqual(completed_process.returncode, 1, completed_process.stdout)
+        self.assertEqual(completed_process.returncode, 1)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(b"discovered a BAD GPG signature", completed_process.stderr)
 
     def test_wrong_signature_uknown_signer(self):
         completed_process = subprocess.run(
@@ -93,10 +100,12 @@ class TestCLI(unittest.TestCase):
                 self.tmpfile,
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             check=False,
         )
-        self.assertEqual(completed_process.returncode, 1, completed_process.stdout)
+        self.assertEqual(completed_process.returncode, 1)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(b"discovered a BAD GPG signature", completed_process.stderr)
 
     def test_clearsign(self):
         completed_process = subprocess.run(
@@ -109,12 +118,21 @@ class TestCLI(unittest.TestCase):
                 self.tmpfile,
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             check=False,
         )
-        self.assertEqual(completed_process.returncode, 0, completed_process.stdout)
+        self.assertEqual(completed_process.returncode, 0)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"successfully verified bmap file signature", completed_process.stderr
+        )
 
     def setUp(self):
+        try:
+            import gpg
+        except ImportError:
+            self.skipTest("python module 'gpg' missing")
+
         os.makedirs("tests/test-data/signatures", exist_ok=True)
         for gnupghome, userid in [
             ("tests/test-data/gnupg/", "correct <foo@bar.org>"),
