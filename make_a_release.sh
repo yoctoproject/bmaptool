@@ -32,7 +32,7 @@ usage() {
         cat <<EOF
 Usage: ${0##*/} <new_ver> <outdir>
 
-<new_ver>  - new bmaptool version to make in X.Y format
+<new_ver>  - new bmaptool version to make in X.Y.Z format
 EOF
         exit 0
 }
@@ -75,8 +75,8 @@ format_changelog() {
 new_ver="$1"; shift
 
 # Validate the new version
-printf "%s" "$new_ver" | egrep -q -x '[[:digit:]]+\.[[:digit:]]+' ||
-        fatal "please, provide new version in X.Y format"
+printf "%s" "$new_ver" | egrep -q -x '[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+' ||
+        fatal "please, provide new version in X.Y.Z format"
 
 # Make sure that the current branch is 'main'
 current_branch="$(git branch | sed -n -e '/^*/ s/^* //p')"
@@ -92,9 +92,9 @@ ask_question "Did you update the man page"
 ask_question "Did you update tests: test-data and oldcodebase"
 
 # Change the version in the 'bmaptool/CLI.py' file
-sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" bmaptool/CLI.py
+sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" bmaptool/CLI.py
 # Sed the version in the RPM spec file
-sed -i -e "s/^Version: [0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmaptool.spec
+sed -i -e "s/^Version: [0-9]\+\.[0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmaptool.spec
 # Remove the "rc_num" macro from the RPM spec file to make sure we do not have
 # the "-rcX" part in the release version
 sed -i -e '/^%define[[:blank:]]\+rc_num[[:blank:]]\+[[:digit:]]\+[[:blank:]]*$/d' packaging/bmaptool.spec
