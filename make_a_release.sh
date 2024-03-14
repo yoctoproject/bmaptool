@@ -98,6 +98,10 @@ sed -i -e "s/^Version: [0-9]\+\.[0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/
 # Remove the "rc_num" macro from the RPM spec file to make sure we do not have
 # the "-rcX" part in the release version
 sed -i -e '/^%define[[:blank:]]\+rc_num[[:blank:]]\+[[:digit:]]\+[[:blank:]]*$/d' packaging/bmaptool.spec
+# update man page title line (.TH)
+export MANVERSTR="\"bmaptool $new_ver\""
+export MANDATE="\"$(date +"%B %Y")\""
+sed -i -e "s/\.TH.*$/\.TH BMAPTOOL \"1\" $MANDATE $MANVERSTR \"User Commands\"/g" docs/man1/bmaptool.1
 
 # Ask the maintainer for changelog lines
 logfile="$(mktemp -t "$PROG.XXXX")"
