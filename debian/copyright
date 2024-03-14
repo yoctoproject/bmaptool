@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-name: bmap-tools
-Upstream-Contact: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Upstream-Contact: Trevor Woerner <twoerner@gmail.com>
 Source: https://github.com/01org/bmap-tools
   .
   The initial package was put together by Ed Bartosh <eduard.bartosh@intel.com>

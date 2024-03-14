@@ -120,13 +120,13 @@ sed -i -e '/^#.*$/d' -e'/^$/d' "$logfile"
 deblogfile="$(mktemp -t "$PROG.XXXX")"
 printf "%s\n\n" "bmap-tools ($new_ver) unstable; urgency=low" > "$deblogfile"
 format_changelog "$logfile" "  * " "    " >> "$deblogfile"
-printf "\n%s\n\n" " -- Artem Bityutskiy <artem.bityutskiy@linux.intel.com> $(date -R)" >> "$deblogfile"
+printf "\n%s\n\n" " -- Trevor Woerner <twoerner@gmail.com> $(date -R)" >> "$deblogfile"
 cat debian/changelog >> "$deblogfile"
 mv "$deblogfile" debian/changelog
 
 # Prepare RPM changelog
 rpmlogfile="$(mktemp -t "$PROG.XXXX")"
-printf "%s\n" "$(date --utc) - Artem Bityutskiy <artem.bityutskiy@linux.intel.com> ${new_ver}-1" > "$rpmlogfile"
+printf "%s\n" "$(date --utc) - Trevor Woerner <twoerner@gmail.com> ${new_ver}-1" > "$rpmlogfile"
 format_changelog "$logfile" "- " "  " >> "$rpmlogfile"
 printf "\n"  >> "$rpmlogfile"
 cat packaging/bmap-tools.changes >> "$rpmlogfile"

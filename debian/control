@@ -1,5 +1,5 @@
 Source: bmap-tools
-Maintainer: Artem Bityutskiy <artem.bityutskiy@linux.intel.com>
+Maintainer: Trevor Woerner <twoerner@gmail.com>
 Section: utils
 Priority: optional
 Build-Depends: debhelper (>= 9),
