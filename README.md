@@ -362,14 +362,16 @@ More details can be found [in the OpenZFS documentation](https://openzfs.github.
 The bmap-tools project implements bmap-related tools and API modules. The
 entire project is written in python and supports python 2.7 and python 3.x.
 
-The project author is Artem Bityutskiy (dedekind1@gmail.com). Artem is looking
-for a new maintainer for the project. Anyone actively contributing may become a
-maintainer. Please, let Artem know if you volunteer to be one.
+The project author is Artem Bityutskiy (dedekind1@gmail.com). The project
+is currently maintained by:
+* Trevor Woerner (twoerner@gmail.com)
+* Joshua Watt (JPEWhacker@gmail.com)
+* Tim Orling (ticotimo@gmail.com)
 
 Project git repository is here:
 https://github.com/intel/bmap-tools.git
 
-## Credits
+## Artem's Credits
 
 * Ed Bartosh (eduard.bartosh@intel.com) for helping me with learning python
   (this is my first python project) and working with the Tizen IVI

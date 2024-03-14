@@ -20,6 +20,8 @@ setup(
     description="Tools to generate block map (AKA bmap) and copy images " "using bmap",
     author="Artem Bityutskiy",
     author_email="artem.bityutskiy@linux.intel.com",
+    maintainer="Trevor Woerner",
+    maintainer_email="twoerner@gmail.com",
     version=get_version(),
     entry_points={
         "console_scripts": ["bmaptool=bmaptools.CLI:main"],
