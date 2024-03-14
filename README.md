@@ -369,7 +369,7 @@ is currently maintained by:
 * Tim Orling (ticotimo@gmail.com)
 
 Project git repository is here:
-https://github.com/intel/bmap-tools.git
+https://github.com/yoctoproject/bmaptool
 
 ## Artem's Credits
 
