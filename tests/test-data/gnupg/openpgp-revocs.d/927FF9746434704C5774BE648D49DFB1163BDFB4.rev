@@ -2,7 +2,7 @@ This is a revocation certificate for the OpenPGP key:
 
 pub   rsa3072 2022-06-13 [SC] [expires: 2024-06-12]
       927FF9746434704C5774BE648D49DFB1163BDFB4
-uid          Testkey Bmap-Tool (Do not use, private key published!) <invalid@example.org>
+uid          Testkey bmaptool (Do not use, private key published!) <invalid@example.org>
 
 A revocation certificate is a kind of "kill switch" to publicly
 declare that a key shall not anymore be used.  It is not possible

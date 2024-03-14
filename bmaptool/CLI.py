@@ -38,7 +38,7 @@ import tempfile
 import traceback
 import shutil
 import io
-from bmaptools import BmapCreate, BmapCopy, BmapHelpers, TransRead
+from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
 VERSION = "3.7"
 

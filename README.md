@@ -1,4 +1,4 @@
-# `bmap-tools`
+# `bmaptool`
 
 > The better `dd` for embedded projects, based on block maps.
 
@@ -282,7 +282,7 @@ expand it. Later on, you may reconstruct it using the `bmaptool copy` command.
 ------------------------------------------------------------------------------------
 | - bmaptool                 | A tools to create bmap and copy with bmap. Based    |
 |                            | on the 'BmapCreate.py' and 'BmapCopy.py' modules.   |
-| - setup.py                 | A script to turn the entire bmap-tools project      |
+| - setup.py                 | A script to turn the entire bmaptool project        |
 |                            | into a python egg.                                  |
 | - setup.cfg                | contains a piece of nose tests configuration        |
 | - .coveragerc              | lists files to include into test coverage report    |
@@ -301,7 +301,7 @@ expand it. Later on, you may reconstruct it using the `bmaptool copy` command.
 |   | - test-data/           | Data files for the unit-tests                       |
 |   | - oldcodebase/         | Copies of old BmapCopy implementations for bmap     |
 |   |                        | format forward-compatibility verification.          |
-| - bmaptools/               | The API modules which implement all the bmap        |
+| - bmaptool/                | The API modules which implement all the bmap        |
 |   |                        | functionality.                                      |
 |   | - BmapCreate.py        | Creates a bmap for a given file.                    |
 |   | - BmapCopy.py          | Implements copying of an image using its bmap.      |
@@ -359,7 +359,7 @@ More details can be found [in the OpenZFS documentation](https://openzfs.github.
 
 ## Project and maintainer
 
-The bmap-tools project implements bmap-related tools and API modules. The
+The bmaptool project implements bmap-related tools and API modules. The
 entire project is written in python and supports python 2.7 and python 3.x.
 
 The project author is Artem Bityutskiy (dedekind1@gmail.com). The project

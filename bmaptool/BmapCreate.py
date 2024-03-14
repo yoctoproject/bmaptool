@@ -48,8 +48,8 @@ This module uses the FIEMAP ioctl to detect holes.
 # pylint: disable=R0902,R0903
 
 import hashlib
-from bmaptools.BmapHelpers import human_size
-from bmaptools import Filemap
+from .BmapHelpers import human_size
+from . import Filemap
 
 # The bmap format version we generate.
 #
@@ -61,8 +61,8 @@ from bmaptools import Filemap
 #   an incompatible change.
 #   Note, bmap format 1.4 is identical to 2.0. Version 1.4 was a mistake,
 #   instead of incrementing the major version number, we incremented minor
-#   version number. Unfortunately, the mistake slipped into bmap-tools version
-#   3.0, and was only fixed in bmap-tools v3.1.
+#   version number. Unfortunately, the mistake slipped into bmaptool version
+#   3.0, and was only fixed in bmaptool v3.1.
 SUPPORTED_BMAP_VERSION = "2.0"
 
 _BMAP_START_TEMPLATE = """<?xml version="1.0" ?>

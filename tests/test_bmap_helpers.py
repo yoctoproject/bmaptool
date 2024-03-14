@@ -30,7 +30,7 @@ try:
     from tempfile import TemporaryDirectory
 except ImportError:  # for Python < 3.2
     from backports.tempfile import TemporaryDirectory
-from bmaptools import BmapHelpers
+from bmaptool import BmapHelpers
 
 
 # This is a work-around for Centos 6

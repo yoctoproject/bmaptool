@@ -30,7 +30,7 @@ import hashlib
 import struct
 import sys
 import os
-from bmaptools import BmapHelpers, BmapCopy, TransRead
+from bmaptool import BmapHelpers, BmapCopy, TransRead
 
 
 def _create_random_sparse_file(file_obj, size):

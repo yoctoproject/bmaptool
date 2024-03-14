@@ -31,7 +31,7 @@ import os
 import shutil
 import tempfile
 from tests import helpers
-from bmaptools import TransRead, BmapCopy
+from bmaptool import TransRead, BmapCopy
 
 # This is a work-around for Centos 6
 try:

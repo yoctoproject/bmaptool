@@ -34,7 +34,7 @@ import threading
 import subprocess
 import netrc
 from six.moves.urllib import parse as urlparse
-from bmaptools import BmapHelpers
+from . import BmapHelpers
 
 _log = logging.getLogger(__name__)  # pylint: disable=C0103
 

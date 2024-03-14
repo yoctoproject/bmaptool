@@ -2,7 +2,7 @@
 # like '1.0-0.rc7' for release candidate rc7 and '1.0-1' for the '1.0' release.
 %define rc_str %{?rc_num:0.rc%{rc_num}}%{!?rc_num:1}
 
-Name: bmap-tools
+Name: bmaptool
 Summary: Tools to generate block map (AKA bmap) and flash images using bmap
 Version: 3.7
 %if 0%{?opensuse_bs}
@@ -58,7 +58,7 @@ Requires: python-argparse
 %endif
 
 %description
-Tools to generate block map (AKA bmap) and flash images using bmap. Bmaptool is
+Tools to generate block map (AKA bmap) and flash images using bmap. bmaptool is
 a generic tool for creating the block map (bmap) for a file, and copying files
 using the block map. The idea is that large file containing unused blocks, like
 raw system image files, can be copied or flashed a lot faster with bmaptool
@@ -80,9 +80,9 @@ install -m644 docs/man1/bmaptool.1 %{buildroot}/%{_mandir}/man1
 %files
 %defattr(-,root,root,-)
 %license COPYING
-%dir /usr/lib/python*/site-packages/bmaptools
+%dir /usr/lib/python*/site-packages/bmaptool
 /usr/lib/python*/site-packages/bmap_tools*
-/usr/lib/python*/site-packages/bmaptools/*
+/usr/lib/python*/site-packages/bmaptool/*
 %{_bindir}/*
 
 %doc docs/RELEASE_NOTES

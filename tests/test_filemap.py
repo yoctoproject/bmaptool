@@ -30,7 +30,7 @@ import random
 import itertools
 import tests.helpers
 from six.moves import zip_longest
-from bmaptools import Filemap
+from bmaptool import Filemap
 
 # This is a work-around for Centos 6
 try:

@@ -59,7 +59,7 @@ from six import reraise
 from six.moves import queue as Queue
 from six.moves import _thread as thread
 from xml.etree import ElementTree
-from bmaptools.BmapHelpers import human_size
+from bmaptool.BmapHelpers import human_size
 
 # The highest supported bmap format version
 SUPPORTED_BMAP_VERSION = "1.0"

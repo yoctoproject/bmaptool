@@ -68,7 +68,7 @@ from six.moves import queue as Queue
 from six.moves import _thread as thread
 from typing import Optional
 from xml.etree import ElementTree
-from bmaptools.BmapHelpers import human_size
+from .BmapHelpers import human_size
 
 _log = logging.getLogger(__name__)  # pylint: disable=C0103
 

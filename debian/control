@@ -1,4 +1,4 @@
-Source: bmap-tools
+Source: bmaptool
 Maintainer: Trevor Woerner <twoerner@gmail.com>
 Section: utils
 Priority: optional
@@ -8,7 +8,7 @@ Build-Depends: debhelper (>= 9),
 Standards-Version: 3.8.4
 XS-Python-Version: >= 2.7
 
-Package: bmap-tools
+Package: bmaptool
 Architecture: all
 Depends: python (>=2.7),
 	 python-gpgme,
@@ -25,7 +25,7 @@ Depends: python (>=2.7),
 	 unzip,
 	 zstd
 Description: Tools to generate block map (AKA bmap) and flash images using
- bmap. Bmaptool is a generic tool for creating the block map (bmap) for a file,
+ bmap. bmaptool is a generic tool for creating the block map (bmap) for a file,
  and copying files using the block map. The idea is that large file containing
  unused blocks, like raw system image files, can be copied or flashed a lot
  faster with bmaptool than with traditional tools like "dd" or "cp". See

@@ -48,7 +48,7 @@ from six import reraise
 from six.moves import queue as Queue
 from six.moves import _thread as thread
 from xml.etree import ElementTree
-from bmaptools.BmapHelpers import human_size
+from bmaptool.BmapHelpers import human_size
 
 # A list of supported image formats
 SUPPORTED_IMAGE_FORMATS = ("bz2", "gz", "tar.gz", "tgz", "tar.bz2")
