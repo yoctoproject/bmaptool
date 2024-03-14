@@ -141,9 +141,9 @@ outdir="."
 tag_name="v$new_ver"
 release_name="bmaptool-$new_ver"
 
-# Create new signed tag
-printf "%s\n" "Signing tag $tag_name"
-git tag -m "$release_name" -s "$tag_name"
+# Create new tag
+printf "%s\n" "Creating tag $tag_name"
+git tag -m "$release_name" "$tag_name"
 
 # Get the name of the release branch corresponding to this version
 release_branch="release-$(printf "%s" "$new_ver" | sed -e 's/\(.*\)\..*/\1.0/')"
