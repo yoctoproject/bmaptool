@@ -14,7 +14,7 @@ Release: %{rc_str}.0.0
 Group: Development/Tools/Other
 License: GPL-2.0
 BuildArch: noarch
-URL: https://github.com/intel/bmap-tools
+URL: https://github.com/yoctoproject/bmaptool
 Source0: %{name}-%{version}.tar.gz
 
 Requires: bzip2

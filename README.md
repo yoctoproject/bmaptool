@@ -367,7 +367,7 @@ for a new maintainer for the project. Anyone actively contributing may become a
 maintainer. Please, let Artem know if you volunteer to be one.
 
 Project git repository is here:
-https://github.com/intel/bmap-tools.git
+https://github.com/yoctoproject/bmaptool.git
 
 ## Credits
 
