@@ -13,12 +13,12 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 # General Public License for more details.
 
-# This script automates the process of releasing the bmap-tools project. The
+# This script automates the process of releasing the bmaptool project. The
 # idea is that it should be enough to run this script with few parameters and
 # the release is ready.
 
 #
-# This script is supposed to be executed in the root of the bmap-tools
+# This script is supposed to be executed in the root of the bmaptool
 # project's source code tree.
 
 PROG="make_a_release.sh"
@@ -32,7 +32,7 @@ usage() {
         cat <<EOF
 Usage: ${0##*/} <new_ver> <outdir>
 
-<new_ver>  - new bmap-tools version to make in X.Y format
+<new_ver>  - new bmaptool version to make in X.Y format
 EOF
         exit 0
 }
@@ -91,13 +91,13 @@ fi
 ask_question "Did you update the man page"
 ask_question "Did you update tests: test-data and oldcodebase"
 
-# Change the version in the 'bmaptools/CLI.py' file
-sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" bmaptools/CLI.py
+# Change the version in the 'bmaptool/CLI.py' file
+sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" bmaptool/CLI.py
 # Sed the version in the RPM spec file
-sed -i -e "s/^Version: [0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmap-tools.spec
+sed -i -e "s/^Version: [0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmaptool.spec
 # Remove the "rc_num" macro from the RPM spec file to make sure we do not have
 # the "-rcX" part in the release version
-sed -i -e '/^%define[[:blank:]]\+rc_num[[:blank:]]\+[[:digit:]]\+[[:blank:]]*$/d' packaging/bmap-tools.spec
+sed -i -e '/^%define[[:blank:]]\+rc_num[[:blank:]]\+[[:digit:]]\+[[:blank:]]*$/d' packaging/bmaptool.spec
 
 # Ask the maintainer for changelog lines
 logfile="$(mktemp -t "$PROG.XXXX")"
@@ -118,7 +118,7 @@ sed -i -e '/^#.*$/d' -e'/^$/d' "$logfile"
 
 # Prepare Debian changelog
 deblogfile="$(mktemp -t "$PROG.XXXX")"
-printf "%s\n\n" "bmap-tools ($new_ver) unstable; urgency=low" > "$deblogfile"
+printf "%s\n\n" "bmaptool ($new_ver) unstable; urgency=low" > "$deblogfile"
 format_changelog "$logfile" "  * " "    " >> "$deblogfile"
 printf "\n%s\n\n" " -- Trevor Woerner <twoerner@gmail.com> $(date -R)" >> "$deblogfile"
 cat debian/changelog >> "$deblogfile"
@@ -129,8 +129,8 @@ rpmlogfile="$(mktemp -t "$PROG.XXXX")"
 printf "%s\n" "$(date --utc) - Trevor Woerner <twoerner@gmail.com> ${new_ver}-1" > "$rpmlogfile"
 format_changelog "$logfile" "- " "  " >> "$rpmlogfile"
 printf "\n"  >> "$rpmlogfile"
-cat packaging/bmap-tools.changes >> "$rpmlogfile"
-mv "$rpmlogfile" packaging/bmap-tools.changes
+cat packaging/bmaptool.changes >> "$rpmlogfile"
+mv "$rpmlogfile" packaging/bmaptool.changes
 
 rm "$logfile"
 
@@ -139,7 +139,7 @@ git commit -a -s -m "Release version $new_ver"
 
 outdir="."
 tag_name="v$new_ver"
-release_name="bmap-tools-$new_ver"
+release_name="bmaptool-$new_ver"
 
 # Create new signed tag
 printf "%s\n" "Signing tag $tag_name"

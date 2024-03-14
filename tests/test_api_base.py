@@ -36,7 +36,7 @@ import filecmp
 import subprocess
 from six.moves import zip_longest
 from tests import helpers
-from bmaptools import BmapHelpers, BmapCreate, Filemap
+from bmaptool import BmapHelpers, BmapCreate, Filemap
 
 # This is a work-around for Centos 6
 try:
