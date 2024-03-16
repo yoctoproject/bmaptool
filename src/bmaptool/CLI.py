@@ -419,6 +419,45 @@ def open_files(args):
             "(you specified the same path for them)"
         )
 
+    if args.removable_device:
+        if not os.path.exists(args.dest):
+            # Missing device could occur often enough with removable devices,
+            # so trigger an error if it happens.
+            error_out(
+                f"Destination file {args.dest} does not exist. But the "
+                "removable-device option expects destination file to be an "
+                "existing device."
+            )
+        elif not stat.S_ISBLK(os.stat(args.dest).st_mode):
+            error_out(
+                f"Destination file {args.dest} is not a block device. But the "
+                "removable-device option expects the destination file to be "
+                "one."
+            )
+        else:
+            # Check whether the block device is removable by looking at
+            # /sys/block/<devicename>/removable attribute. The value in the
+            # file is "1" if removable, and "0" if not removable.
+            removable_path = os.path.join(
+                "/sys/block", os.path.basename(args.dest), "removable"
+            )
+            try:
+                removable_value = open(removable_path, "r").read(1)
+            except IOError as err:
+                error_out(
+                    "Unable to detect removability of destination file "
+                    f"{args.dest}. But the removable-device option requires "
+                    "to be able to detect that it is a block device which is "
+                    " removable. Cannot open sysfs attribute "
+                    f"{removable_path} : {err}"
+                )
+            if removable_value != "1":
+                error_out(
+                    f"Destination file {args.dest} is not a removable block "
+                    "device. But the removable-device option expects it to be "
+                    "one."
+                )
+
     # If the destination file is under "/dev", but does not exist, print a
     # warning. This is done in order to be more user-friendly, because
     # sometimes users mean to write to a block device, them misspell its name.
@@ -695,6 +734,10 @@ def parse_arguments():
     # The --psplash-pipe option
     text = "write progress to a psplash pipe"
     parser_copy.add_argument("--psplash-pipe", help=text)
+
+    # The --removable-device option
+    text = "copy on destination file only if it is a removable block device"
+    parser_copy.add_argument("--removable-device", action="store_true", help=text)
 
     return parser.parse_args()
 

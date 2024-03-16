@@ -216,6 +216,15 @@ used by \fBpsplash\fR. Each progress report consists of "PROGRESS" followed
 by a space, an integer percentage and a newline.
 .RE
 
+.PP
+\-\-removable\-device
+.RS 2
+Copy to destination only if it is a removable block device. This option is
+recommended when writing on SD Card or USB key to avoid involuntary
+destructive operations on non-removable disks. The copy command fails when the
+destination file does not exist, is not a block device or is not removable.
+.RE
+
 .RE
 .RE
 
