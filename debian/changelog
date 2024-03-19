@@ -1,3 +1,14 @@
+bmaptool (3.8.0) unstable; urgency=low
+
+  * use 'df -P' for POSIX portable output
+  * bmaptool has new maintainers
+  * bmaptool has a new home
+  * bmaptool is now only called 'bmaptool' and not one of a dozen such
+    variations
+  * switch to use an X.Y.Z versioning number scheme
+
+ -- Trevor Woerner <twoerner@gmail.com> Mon, 18 Mar 2024 23:44:10 -0400
+
 bmap-tools (3.7) unstable; urgency=low
 
   * Use GitHub Actions for CI (#109)
