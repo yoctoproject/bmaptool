@@ -40,7 +40,7 @@ import shutil
 import io
 from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
-VERSION = "3.7"
+VERSION = "3.8.0"
 
 log = logging.getLogger()  # pylint: disable=C0103
 

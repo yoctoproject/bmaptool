@@ -1,3 +1,10 @@
+Tue Mar 19 03:44:10 UTC 2024 - Trevor Woerner <twoerner@gmail.com> 3.8.0-1
+- use 'df -P' for POSIX portable output
+- bmaptool has new maintainers
+- bmaptool has a new home
+- bmaptool is now only called 'bmaptool' and not one of a dozen such variations
+- switch to use an X.Y.Z versioning number scheme
+
 Wed Aug  2 12:11:26 PM UTC 2023 - Artem Bityutskiy <artem.bityutskiy@linux.intel.com> 3.7-1
 - Use GitHub Actions for CI (#109)
 - Add `poetry` for dependency management and `black` for code formatting (#104)
