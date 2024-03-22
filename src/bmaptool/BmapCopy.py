@@ -63,9 +63,8 @@ import sys
 import hashlib
 import logging
 import datetime
-from six import reraise
-from six.moves import queue as Queue
-from six.moves import _thread as thread
+import queue
+import _thread as thread
 from typing import Optional
 from xml.etree import ElementTree
 from .BmapHelpers import human_size
@@ -684,7 +683,7 @@ class BmapCopy(object):
 
         # Create the queue for block batches and start the reader thread, which
         # will read the image in batches and put the results to '_batch_queue'.
-        self._batch_queue = Queue.Queue(self._batch_queue_len)
+        self._batch_queue = queue.Queue(self._batch_queue_len)
         thread.start_new_thread(self._get_data, (verify,))
 
         blocks_written = 0
@@ -714,7 +713,7 @@ class BmapCopy(object):
                 # The reader thread encountered an error and passed us the
                 # exception.
                 exc_info = batch[1]
-                reraise(exc_info[0], exc_info[1], exc_info[2])
+                raise exc_info[1]
 
             (start, end, buf) = batch[1:4]
 

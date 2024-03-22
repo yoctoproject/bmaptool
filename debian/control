@@ -3,14 +3,14 @@ Maintainer: Trevor Woerner <twoerner@gmail.com>
 Section: utils
 Priority: optional
 Build-Depends: debhelper (>= 9),
-               python-all (>= 2.7),
-               python-setuptools,
+               python3 (>= 3.8),
+               python3-setuptools,
 Standards-Version: 3.8.4
-XS-Python-Version: >= 2.7
+XS-Python-Version: >= 3.8
 
 Package: bmaptool
 Architecture: all
-Depends: python (>=2.7),
+Depends: python (>=3.8),
 	 python-gpgme,
          ${misc:Depends},
          ${python:Depends},
