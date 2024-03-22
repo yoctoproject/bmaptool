@@ -34,7 +34,7 @@ import sys
 import tempfile
 import filecmp
 import subprocess
-from six.moves import zip_longest
+from itertools import zip_longest
 from tests import helpers
 from bmaptool import BmapHelpers, BmapCreate, Filemap
 

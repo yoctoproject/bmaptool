@@ -3,7 +3,6 @@ name = "bmaptool"
 description = "BMAP tools"
 dynamic = ["version"]
 dependencies = [
-    "six >= 1.16.0",
     "gpg >= 1.10.0",
 ]
 required-python = ">= 3.8"
@@ -31,6 +30,7 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "black >= 22.3.0",
+    "six >= 1.16.0",
 ]
 
 [project.urls]
