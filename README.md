@@ -334,8 +334,8 @@ python3 -m unittest -bv
 
 ## Project and maintainer
 
-The bmaptool project implements bmap-related tools and API modules. The
-entire project is written in python and supports python 2.7 and python 3.x.
+The bmaptool project implements bmap-related tools and API modules. The entire
+project is written in python
 
 The project author is Artem Bityutskiy (dedekind1@gmail.com). The project
 is currently maintained by:
