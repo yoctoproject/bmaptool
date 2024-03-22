@@ -284,7 +284,6 @@ expand it. Later on, you may reconstruct it using the `bmaptool copy` command.
 |                            | on the 'BmapCreate.py' and 'BmapCopy.py' modules.   |
 | - setup.py                 | A script to turn the entire bmaptool project        |
 |                            | into a python egg.                                  |
-| - setup.cfg                | contains a piece of nose tests configuration        |
 | - .coveragerc              | lists files to include into test coverage report    |
 | - TODO                     | Just a list of things to be done for the project.   |
 | - make_a_release.sh        | Most people may ignore this script. It is used by   |
@@ -316,12 +315,6 @@ expand it. Later on, you may reconstruct it using the `bmaptool copy` command.
 |                            | project maintainers do not really test or maintain. |
 ------------------------------------------------------------------------------------
 ```
-
-## How to run unit tests
-
-Just install the `nose` python test framework and run the `nosetests` command in
-the project root directory. If you want to see tests coverage report, run
-`nosetests --with-coverage`.
 
 ## Known Issues
 
