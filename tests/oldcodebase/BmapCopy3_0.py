@@ -494,14 +494,14 @@ class BmapCopy:
         """
 
         try:
-            for (first, last, chksum) in self._get_block_ranges():
+            for first, last, chksum in self._get_block_ranges():
                 if verify and chksum:
                     hash_obj = hashlib.new(self._cs_type)
 
                 self._f_image.seek(first * self.block_size)
 
                 iterator = self._get_batches(first, last)
-                for (start, end, length) in iterator:
+                for start, end, length in iterator:
                     try:
                         buf = self._f_image.read(length * self.block_size)
                     except IOError as err:

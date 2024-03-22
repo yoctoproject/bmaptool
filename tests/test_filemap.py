@@ -76,7 +76,6 @@ def _check_ranges(f_image, filemap, first_block, blocks_cnt, ranges, ranges_type
     # ranges and the Filemap generator, and verify the mapped/unmapped ranges
     # returned by the 'Filemap' module.
     for correct, check in iterator:
-
         # The first and the last range of the filtered 'ranges' list may still
         # be out of the limit - correct them in this case
         if correct[0] < first_block:

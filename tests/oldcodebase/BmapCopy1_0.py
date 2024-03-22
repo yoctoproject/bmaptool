@@ -425,14 +425,14 @@ class BmapCopy:
           * 'buf' a buffer containing the batch data."""
 
         try:
-            for (first, last, sha1) in self._get_block_ranges():
+            for first, last, sha1 in self._get_block_ranges():
                 if verify and sha1:
                     hash_obj = hashlib.new("sha1")
 
                 self._f_image.seek(first * self.block_size)
 
                 iterator = self._get_batches(first, last)
-                for (start, end, length) in iterator:
+                for start, end, length in iterator:
                     try:
                         buf = self._f_image.read(length * self.block_size)
                     except IOError as err:

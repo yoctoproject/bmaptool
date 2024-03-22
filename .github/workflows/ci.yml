@@ -47,3 +47,9 @@ jobs:
         poetry install -n
     - name: Run tests
       run: poetry run python -m unittest -bv
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
