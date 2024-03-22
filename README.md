@@ -357,6 +357,28 @@ $ cat /sys/module/zfs/parameters/zfs_dmu_offset_next_sync
 
 More details can be found [in the OpenZFS documentation](https://openzfs.github.io/openzfs-docs/Performance%20and%20Tuning/Module%20Parameters.html).
 
+## Hacking
+
+`bmaptool` uses `hatch` to build python packages. If you would like to make
+changes to the project, first create a new virtual environment and activate it:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+```
+
+Next install the project in editable mode with development dependencies:
+
+```bash
+pip install -m .[dev]
+```
+
+Finally, to run tests use `unittest`:
+
+```bash
+python3 -m unittest -bv
+```
+
 ## Project and maintainer
 
 The bmaptool project implements bmap-related tools and API modules. The
