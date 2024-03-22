@@ -251,7 +251,7 @@ the image file.
 
 The second usage scenario is reconstructing sparse files Generally speaking, if
 you had a sparse file but then expanded it, there is no way to reconstruct it.
-In some cases, something like
+In some cases, something like:
 
 ```bash
 $ cp --sparse=always expanded.file reconstructed.file
@@ -335,7 +335,7 @@ python3 -m unittest -bv
 ## Project and maintainer
 
 The bmaptool project implements bmap-related tools and API modules. The entire
-project is written in python
+project is written in python.
 
 The project author is Artem Bityutskiy (dedekind1@gmail.com). The project
 is currently maintained by:
