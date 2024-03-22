@@ -639,15 +639,8 @@ class TransRead(object):
         for timeout in (10, None):
             try:
                 f_obj = opener.open(url, timeout=timeout)
-            # Handling the timeout case in Python 2.7
-            except socket.timeout as err:
-                if timeout is not None:
-                    _print_warning(timeout)
-                else:
-                    raise Error("cannot open URL '%s': %s" % (url, err))
             except URLError as err:
-                # Handling the timeout case in Python 2.6
-                if timeout is not None and isinstance(err.reason, socket.timeout):
+                if timeout is not None:
                     _print_warning(timeout)
                 else:
                     raise Error("cannot open URL '%s': %s" % (url, err))
