@@ -33,7 +33,10 @@ import logging
 import threading
 import subprocess
 import netrc
-from six.moves.urllib import parse as urlparse
+import http.client
+import urllib.error
+import urllib.parse
+import urllib.request
 from . import BmapHelpers
 
 _log = logging.getLogger(__name__)  # pylint: disable=C0103
@@ -578,13 +581,7 @@ class TransRead(object):
                 "proxy configured correctly? Keep trying ..." % timeout
             )
 
-        import socket
-
-        from six.moves import http_client as httplib
-        from six.moves.urllib import request as urllib
-        from six.moves.urllib.error import URLError
-
-        parsed_url = urlparse.urlparse(url)
+        parsed_url = urllib.parse.urlparse(url)
 
         if parsed_url.scheme == "ssh":
             # Unfortunately, urllib2 does not handle "ssh://" URLs
@@ -615,18 +612,18 @@ class TransRead(object):
                 new_url[1] = "%s:%s" % (parsed_url.hostname, parsed_url.port)
             else:
                 new_url[1] = parsed_url.hostname
-            url = urlparse.urlunparse(new_url)
+            url = urllib.parse.urlunparse(new_url)
 
             # Build an URL opener which will do the authentication
-            password_manager = urllib.HTTPPasswordMgrWithDefaultRealm()
+            password_manager = urllib.request.HTTPPasswordMgrWithDefaultRealm()
             password_manager.add_password(None, url, username, password)
-            auth_handler = urllib.HTTPBasicAuthHandler(password_manager)
-            opener = urllib.build_opener(auth_handler)
+            auth_handler = urllib.request.HTTPBasicAuthHandler(password_manager)
+            opener = urllib.request.build_opener(auth_handler)
         else:
-            opener = urllib.build_opener()
+            opener = urllib.request.build_opener()
 
         opener.addheaders = [("User-Agent", "Mozilla/5.0")]
-        urllib.install_opener(opener)
+        urllib.request.install_opener(opener)
 
         # Open the URL. First try with a short timeout, and print a message
         # which should supposedly give the a clue that something may be going
@@ -639,14 +636,14 @@ class TransRead(object):
         for timeout in (10, None):
             try:
                 f_obj = opener.open(url, timeout=timeout)
-            except URLError as err:
+            except urllib.error.URLError as err:
                 if timeout is not None:
                     _print_warning(timeout)
                 else:
                     raise Error("cannot open URL '%s': %s" % (url, err))
-            except (IOError, ValueError, httplib.InvalidURL) as err:
+            except (IOError, ValueError, http.client.InvalidURL) as err:
                 raise Error("cannot open URL '%s': %s" % (url, err))
-            except httplib.BadStatusLine:
+            except http.client.BadStatusLine:
                 raise Error(
                     "cannot open URL '%s': server responds with an "
                     "HTTP status code that we don't understand" % url
