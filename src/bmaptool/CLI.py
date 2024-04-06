@@ -43,7 +43,7 @@ import gpg
 
 from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
-if sys.version_info < (3, 8):
+if sys.version_info < (3, 10):
     from importlib_metadata import version
 else:
     from importlib.metadata import version
@@ -787,7 +787,7 @@ def setup_logger(loglevel):
     log.addHandler(where)
 
 
-def main():
+def main():  # pragma: no cover
     """Script entry point."""
     args = parse_arguments()
 

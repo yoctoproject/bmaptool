@@ -147,7 +147,7 @@ class TestFilemap(unittest.TestCase):
     The test class for this unit tests. Basically executes the '_do_test()'
     function for different sparse files.
     """
-
+    @pytest.mark.linux
     @pytest.mark.slow
     def test(self):  # pylint: disable=R0201
         """

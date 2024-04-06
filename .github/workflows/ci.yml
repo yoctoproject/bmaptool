@@ -36,7 +36,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get -qq update
-        sudo apt-get install -y libgpgme-dev
+        sudo apt-get install -y pbzip2 pigz lzop liblz4-tool libgpgme11-dev
 
     - name: Macos dependencies
       if: runner.os == 'MacOS'

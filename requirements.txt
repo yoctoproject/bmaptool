@@ -1,7 +1,6 @@
 defusedxml
 gpg
 # dev tasks
-six
 pytest
 pytest-cov
 pylint
@@ -10,3 +9,4 @@ isort
 flake8
 black
 bandit
+six

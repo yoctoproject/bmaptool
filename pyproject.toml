@@ -39,7 +39,7 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "black >= 22.3.0",
-    "six >= 1.16.0",
+    "pylint >= 3.1.0",
 ]
 cov = [
     "coverage",
@@ -55,6 +55,7 @@ doc = [
 test = [
     "pytest",
     "pytest-cov",
+    "six >= 1.16.0",
 ]
 
 [project.urls]
@@ -74,7 +75,12 @@ testpaths = ["tests", "src/bmaptool",]
 log_cli =  false
 doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE",]
 addopts = "-ra -q -p no:warnings --capture=fd"
-markers = "subscript"
+markers = [
+    "slow: marks tests as slow (run with --slow)",
+    "linux: runs on this platform (or not)",
+    "darwin",
+    "win32",
+]
 
 [tool.coverage.run]
 branch = true
@@ -84,7 +90,7 @@ plugins = ["coverage_python_version"]
 [tool.coverage.paths]
 source = [
     "src/",
-    "*/site-packages"
+    ".tox/*/site-packages"
 ]
 
 [tool.coverage.report]
@@ -130,4 +136,4 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.bandit]
-exclude_dirs = ["docs"]
+exclude_dirs = ["contrib"]

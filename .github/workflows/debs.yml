@@ -7,9 +7,31 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-debs:
+  get_version:
+    name: Get version info
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      version: ${{ steps.git_ver.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get package version
+        id: git_ver
+        run: |
+          version=$(git describe --tags | sed -e "s|v||" -e "s|-g|+g|")
+          echo "Version from git: ${version}"
+          echo "version=${version}" >> $GITHUB_OUTPUT
+
+  build_debs:
     name: ${{ matrix.name }}
     runs-on: ubuntu-22.04
+    needs: [get_version]
 
     strategy:
       fail-fast: false
@@ -31,6 +53,12 @@ jobs:
             dist: bookworm
 
     steps:
+      - name: Check github variables
+        env:
+          VERSION: ${{ needs.get_version.outputs.version }}
+        run: |
+          echo "Package version from git: ${VERSION}"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -39,7 +67,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install devscripts
-          debchange -v "`git describe --tags | sed -e "s|v||" -e "s|-g|+g|"`-${{ matrix.dist }}" -b -M --distribution ${{ matrix.dist }} "ci build"
+          debchange -v ${{ needs.get_version.outputs.version }}-${{ matrix.dist }} -b -M --distribution ${{ matrix.dist }} "ci build"
 
       - name: Build deb packages
         uses: jtdor/build-deb-action@v1
@@ -53,5 +81,5 @@ jobs:
       - name: Upload deb files
         uses: actions/upload-artifact@v4
         with:
-          name: "deb-packages"
+          name: "bmaptool_${{ needs.get_version.outputs.version }}-${{ matrix.dist }}"
           path: ./debian/artifacts/*.deb

@@ -268,6 +268,7 @@ class TestCreateCopy(unittest.TestCase):
     function for different sparse files.
     """
 
+    @pytest.mark.linux
     @pytest.mark.slow
     def test(self):  # pylint: disable=R0201
         """

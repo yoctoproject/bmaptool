@@ -453,6 +453,7 @@ class TransRead(object):
         else:
             child_stdin = self._f_objs[-1].fileno()
 
+        _log.debug("using type %s args '%s'" % (type(args), args))
         child_process = subprocess.Popen(
             args,
             shell=True,
