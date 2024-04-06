@@ -1,3 +1,3 @@
 Tests: smoke
-Depends: bmap-tools, dosfstools, python3
+Depends: bmaptool, dosfstools, python3
 Restrictions: allow-stderr

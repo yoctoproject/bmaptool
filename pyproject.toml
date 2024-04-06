@@ -73,7 +73,7 @@ minversion = "6.0"
 testpaths = ["tests", "src/bmaptool",]
 log_cli =  false
 doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE",]
-addopts = "-ra -q -p no:warnings"
+addopts = "-ra -q -p no:warnings --capture=fd"
 markers = "subscript"
 
 [tool.coverage.run]
