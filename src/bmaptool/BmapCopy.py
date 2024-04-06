@@ -66,9 +66,8 @@ import datetime
 
 from typing import List, Optional
 
-from six import reraise
-from six.moves import queue as Queue
-from six.moves import _thread as thread
+import queue
+import _thread as thread
 from defusedxml import DefusedXmlException
 from defusedxml.ElementTree import parse
 
