@@ -16,12 +16,17 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 authors = [
+    {name = "Artem Bityutskiy", email = "dedekind1@gmail.com"},
+]
+maintainers = [
     {name = "Joshua Watt", email = "JPEWhacker@gmail.com"},
     {name = "Trevor Woerner", email = "twoerner@gmail.com"},
     {name = "Tim Orling", email = "ticotimo@gmail.com"},
 
 ]
 readme = "README.md"
+license = {file = "LICENSE"}
+
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -44,13 +49,6 @@ dev = [
 cov = [
     "coverage",
     "coverage_python_version",
-]
-doc = [
-    "sphinx",
-    "sphinx_git",
-    "recommonmark",
-    "sphinx_rtd_theme",
-    "sphinxcontrib-apidoc",
 ]
 test = [
     "pytest",
@@ -105,7 +103,7 @@ exclude_lines = [
 ]
 
 [tool.black]
-line-length = 90
+line-length = 88
 skip-string-normalization = true
 include = '\.py$'
 exclude = '''

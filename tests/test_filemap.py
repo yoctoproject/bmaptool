@@ -29,7 +29,6 @@ import sys
 import random
 import itertools
 import tests.helpers
-
 from itertools import zip_longest
 
 from bmaptool import Filemap

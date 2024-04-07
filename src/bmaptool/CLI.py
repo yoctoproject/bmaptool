@@ -38,6 +38,7 @@ import tempfile
 import traceback
 import shutil
 import io
+import pathlib
 
 import gpg
 

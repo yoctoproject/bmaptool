@@ -37,20 +37,16 @@ jobs:
       fail-fast: false
       matrix:
         name: [
-          x64_buster,
-          x64_bullseye,
-          x64_bookworm
+          x64_bookworm,
+          x64_trixie,
         ]
 
         include:
-          - name: x64_buster
-            dist: buster
-
-          - name: x64_bullseye
-            dist: bullseye
-
           - name: x64_bookworm
             dist: bookworm
+
+          - name: x64_trixie
+            dist: trixie
 
     steps:
       - name: Check github variables

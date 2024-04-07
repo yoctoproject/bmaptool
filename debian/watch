@@ -1,2 +1,2 @@
 version=4
-https://github.com/intel/@PACKAGE@/tags .*/v@ANY_VERSION@@ARCHIVE_EXT@
+https://github.com/yoctoproject/@PACKAGE@/tags .*/v@ANY_VERSION@@ARCHIVE_EXT@
