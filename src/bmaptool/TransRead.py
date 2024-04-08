@@ -25,15 +25,15 @@ This module uses the following system programs for decompressing: pbzip2, bzip2,
 gzip, pigz, xz, lzop, lz4, zstd, tar and unzip.
 """
 
-import os
-import io
 import errno
-import sys
-import logging
-import threading
-import subprocess
-import netrc
 import http.client
+import io
+import logging
+import netrc
+import os
+import subprocess
+import sys
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request

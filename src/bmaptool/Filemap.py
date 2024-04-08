@@ -27,13 +27,13 @@ and returns an instance of the class.
 #   * Too many instance attributes (R0902)
 # pylint: disable=R0902
 
-import os
-import errno
-import struct
 import array
+import errno
 import fcntl
-import tempfile
 import logging
+import os
+import struct
+import tempfile
 
 from . import BmapHelpers
 

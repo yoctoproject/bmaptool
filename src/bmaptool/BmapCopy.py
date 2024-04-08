@@ -56,18 +56,17 @@ also contribute to the mapped blocks and are also copied.
 # pylint: disable=R0913
 # pylint: disable=R0915
 
+import _thread as thread
+import datetime
+import hashlib
+import logging
 import os
+import queue
 import re
 import stat
 import sys
-import hashlib
-import logging
-import datetime
-
 from typing import List, Optional
 
-import queue
-import _thread as thread
 from defusedxml import DefusedXmlException
 from defusedxml.ElementTree import parse
 

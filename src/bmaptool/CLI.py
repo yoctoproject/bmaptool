@@ -29,20 +29,20 @@ source.tizen.org/documentation/reference/bmaptool
 # pylint: disable=R0912
 
 import argparse
-import sys
-import os
-import stat
-import time
-import logging
-import tempfile
-import traceback
-import shutil
 import io
+import logging
+import os
 import pathlib
+import shutil
+import stat
+import sys
+import tempfile
+import time
+import traceback
 
 import gpg
 
-from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
+from . import BmapCopy, BmapCreate, BmapHelpers, TransRead
 
 if sys.version_info < (3, 10):
     from importlib_metadata import version

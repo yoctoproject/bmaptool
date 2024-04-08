@@ -312,8 +312,9 @@ More details can be found [in the OpenZFS documentation](https://openzfs.github.
 
 ## Hacking
 
-`bmaptool` uses `hatch` to build python packages. If you would like to make
-changes to the project, first create a new virtual environment and activate it:
+`bmaptool` uses the default setuptools backend to build python
+packages. If you would like to make changes to the project, first
+create a new virtual environment and activate it:
 
 ```bash
 python3 -m venv .venv
@@ -331,6 +332,46 @@ Finally, to run tests use `unittest`:
 ```bash
 python3 -m unittest -bv
 ```
+
+### Alternate workflow using Tox
+
+To test with multiple versions of Python (with a single command!) and
+different platforms, you can use [Tox](http://pypi.python.org/pyp
+i/tox).  In general, each defined tox command will create a Python
+virtual environment in the tox working directory under the command name,
+eg, for the first command shown below: `.tox/py`.
+
+Installing from OS packages is recommended, however, you can instead
+install in a Python virtual environment.  So either use something like:
+
+    $ sudo apt-get install tox  # on Debian/Ubuntu
+    $ sudo emerge dev-python/tox  # on Gentoo/Funtoo
+
+or create a virtual environment and activate it, then:
+
+    $ pip install tox
+
+The following command will use your default system Python version to run
+tests:
+
+    $ tox -e py
+
+To run tests on multiple versions with coverage, try something like:
+
+    $ tox -e py38-linux,py39-linux,coverage  # for example
+
+(substitute your platform above, eg, macos or windows)
+
+Additional tox env commands:
+
+    $ tox -e dev  # create a dev environment and run tests
+    $ tox -e lint  # run pylint analysis
+    $ tox -e mypy  # run mypy import/type checking
+    $ tox -e changes  # update the changelog file
+
+Note you can use the tox environments just like any other Python venv, eg:
+
+    $ source .tox/dev/bin/activate
 
 ## Project and maintainer
 
