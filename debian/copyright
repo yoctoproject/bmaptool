@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: bmaptool
 Upstream-Contact: Trevor Woerner <twoerner@gmail.com>
-Source: https://github.com/intel/bmaptool.git
+Source: https://github.com/yoctoproject/bmaptool.git
 Comment:
   The initial package was put together by Ed Bartosh <eduard.bartosh@intel.com>
   on Sun Oct 27 22:32:19 EEST 2012.

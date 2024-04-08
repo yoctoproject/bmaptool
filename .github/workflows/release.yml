@@ -109,41 +109,41 @@ jobs:
             artifact/*.whl
             artifact/*.gz
 
-  docs:
-    name: Release docs
-    needs: [create_release]
-    runs-on: ubuntu-22.04
+  #docs:
+    #name: Release docs
+    #needs: [create_release]
+    #runs-on: ubuntu-22.04
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+    #steps:
+    #- uses: actions/checkout@v4
+      #with:
+        #fetch-depth: 0
 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.9'
+    #- uses: actions/setup-python@v5
+      #with:
+        #python-version: '3.9'
 
-    - name: Add python requirements
-      run: |
-        python -m pip install --upgrade pip
-        pip install tox
+    #- name: Add python requirements
+      #run: |
+        #python -m pip install --upgrade pip
+        #pip install tox
 
-    - name: Build docs
-      run: |
-        tox -e docs-lint
-        tox -e docs
+    #- name: Build docs
+      #run: |
+        #tox -e docs-lint
+        #tox -e docs
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: ApiDocsHTML
-        path: "docs/_build/html/"
+    #- uses: actions/upload-artifact@v4
+      #with:
+        #name: ApiDocsHTML
+        #path: "docs/_build/html/"
 
-    - name: set nojekyll for github
-      run: |
-        sudo touch docs/_build/html/.nojekyll
+    #- name: set nojekyll for github
+      #run: |
+        #sudo touch docs/_build/html/.nojekyll
 
-    - name: Deploy docs to gh-pages
-      if: ${{ github.event_name == 'push' }}
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        folder: docs/_build/html/
+    #- name: Deploy docs to gh-pages
+      #if: ${{ github.event_name == 'push' }}
+      #uses: JamesIves/github-pages-deploy-action@v4
+      #with:
+        #folder: docs/_build/html/

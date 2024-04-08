@@ -11,7 +11,7 @@ PYTHON3S:=$(shell py3versions -vr)
 override_dh_auto_clean:
 	dh_auto_clean
 	dh_clean PKG-INFO
-	dh_clean .pytest_cache/ bmaptool.egg-info/
+	dh_clean .pytest_cache/ src/*.egg-info/
 
 override_dh_auto_configure:
 	dh_auto_configure -- $(CONFIGURE_ARGS)
