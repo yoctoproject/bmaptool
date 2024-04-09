@@ -1,6 +1,8 @@
 defusedxml
 gpg
 # dev tasks
+hatch
+setuptools-scm
 pytest
 pytest-cov
 pylint
