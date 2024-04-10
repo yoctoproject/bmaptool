@@ -1,0 +1,29 @@
+#!/bin/sh
+
+set -eu
+
+here="$(dirname "$0")"
+here="$(readlink -f "$here")"
+
+cd "${AUTOPKGTEST_TMP}"
+
+mkdir webroot
+rm -f httpd-pipe
+mkfifo httpd-pipe
+"$here/web-server.py" webroot 3> httpd-pipe &
+httpd_pid="$!"
+read ignored < httpd-pipe
+
+truncate -s10M webroot/filesystem.img
+/sbin/mkfs.vfat webroot/filesystem.img
+bmaptool create webroot/filesystem.img > webroot/filesystem.img.bmap
+cat webroot/filesystem.img.bmap
+
+bmaptool copy webroot/filesystem.img filesystem.out
+diff -s webroot/filesystem.img filesystem.out
+
+gzip -9n webroot/filesystem.img
+bmaptool copy "http://127.0.0.1:$(cat httpd-port)/filesystem.img.gz" filesystem.out2
+diff -s filesystem.out filesystem.out2
+
+kill "$httpd_pid"
