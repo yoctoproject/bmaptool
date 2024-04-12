@@ -260,7 +260,7 @@ class BmapCopy(object):
         self._f_image = image
         self._image_path = image.name
 
-        self._f_dest: BinaryIO = dest
+        self._f_dest = dest
         self._dest_path = dest.name
         st_data = os.fstat(self._f_dest.fileno())
         self._dest_is_regfile = stat.S_ISREG(st_data.st_mode)
@@ -793,7 +793,6 @@ class BmapCopy(object):
                 )
 
 
-# See: https://android.googlesource.com/platform/system/core/+/refs/heads/main/libsparse/sparse_format.h
 SPARSE_HEADER_MAGIC = 0xed26ff3a
 CHUNK_TYPE_RAW = 0xCAC1
 CHUNK_TYPE_FILL = 0xCAC2
@@ -809,81 +808,24 @@ CHUNK_HEADER_RESERVED1 = 0
 
 
 class BmapAndroidSparseImageCopy(BmapCopy):
+    """
+    Copies the source image to an Android Sparse Image file
+
+    See: https://android.googlesource.com/platform/system/core/+/refs/heads/main/libsparse/sparse_format.h
+    """
     def __init__(self, image, dest, bmap=None, image_size=None):
         super().__init__(image, dest, bmap, image_size)
 
         self._sparse_image_chunk_cnt = 0
+
+        # Use bigger batch sizes to avoid so many raw chunks in the output
+        # Sparse Image file
         self._batch_bytes = 100 * 2**20
         self._batch_blocks = self._batch_bytes // self.block_size
-        self._offset = 0
 
-    def _print_chunk_info(self, header):
-        blk_sz = self.block_size
-        showhash = False
-
-        unpacked_header = struct.unpack("<2H2I", header)
-        chunk_type = unpacked_header[0]
-        chunk_sz = unpacked_header[2]
-        total_sz = unpacked_header[3]
-        data_sz = total_sz - 12
-        curhash = ""
-        curtype = ""
-
-        curpos = self._f_dest.tell()
-        print("%4u %10u %10u %7u %7u" % (self._sparse_image_chunk_cnt + 1, curpos, data_sz, self._offset, chunk_sz),
-              end=" ")
-
-        if chunk_type == 0xCAC1:
-            if data_sz != (chunk_sz * blk_sz):
-                print("Raw chunk input size (%u) does not match output size (%u)"
-                        % (data_sz, chunk_sz * blk_sz))
-                return
-            else:
-                curtype = "Raw data"
-
-        elif chunk_type == 0xCAC2:
-            if data_sz != 4:
-                print("Fill chunk should have 4 bytes of fill, but this has %u"
-                        % (data_sz))
-                return
-            else:
-                fill_bin = FH.read(4)
-                fill = struct.unpack("<I", fill_bin)
-                curtype = format("Fill with 0x%08X" % (fill))
-                if showhash:
-                    h = hashlib.sha1()
-                    data = fill_bin * (blk_sz / 4);
-                    for block in range(chunk_sz):
-                        h.update(data)
-                    curhash = h.hexdigest()
-        elif chunk_type == 0xCAC3:
-            if data_sz != 0:
-                print("Don't care chunk input size is non-zero (%u)" % (data_sz))
-                return
-            else:
-                curtype = "Don't care"
-        elif chunk_type == 0xCAC4:
-            if data_sz != 4:
-                print("CRC32 chunk should have 4 bytes of CRC, but this has %u"
-                    % (data_sz))
-                return
-            else:
-                crc_bin = FH.read(4)
-                crc = struct.unpack("<I", crc_bin)
-                curtype = format("Unverified CRC32 0x%08X" % (crc))
-        else:
-            print("Unknown chunk type 0x%04X" % (chunk_type))
-            return
-
-        print("%-18s" % (curtype), end=" ")
-        print(curhash)
-
-        self._offset += chunk_sz
 
     def _write_chunk(self, header, data=None):
         assert(len(header) == CHUNK_HEADER_SIZE)
-
-        self._print_chunk_info(header)
 
         try:
             self._f_dest.write(header)
@@ -924,13 +866,6 @@ class BmapAndroidSparseImageCopy(BmapCopy):
 
 
     def copy(self, sync=True, verify=True):
-        """
-        Copy the image to the destination file using bmap. The 'sync' argument
-        defines whether the destination file has to be synchronized upon
-        return.  The 'verify' argument defines whether the checksum has to be
-        verified while copying.
-        """
-
         # Create the queue for block batches and start the reader thread, which
         # will read the image in batches and put the results to '_batch_queue'.
         self._batch_queue = queue.Queue(self._batch_queue_len)
@@ -948,9 +883,6 @@ class BmapAndroidSparseImageCopy(BmapCopy):
         # skip past the file header. we'll seek back and write it later once we
         # know all the information that goes in it
         self._f_dest.seek(FILE_HEADER_SIZE)
-
-        print("            input_bytes      output_blocks")
-        print("chunk    offset     number  offset  number")
 
         # Read the image in '_batch_blocks' chunks and write them to the
         # destination file
@@ -1018,8 +950,6 @@ class BmapAndroidSparseImageCopy(BmapCopy):
                     self._bmap_path,
                 )
             )
-
-        print(f"sparse_image_chunk_cnt: {self._sparse_image_chunk_cnt}")
 
         file_header = struct.pack("<I4H4I",
             SPARSE_HEADER_MAGIC,
