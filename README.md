@@ -323,7 +323,7 @@ python3 -m venv .venv
 Next install the project in editable mode with development dependencies:
 
 ```bash
-pip install -m .[dev]
+pip install -e .[dev]
 ```
 
 Finally, to run tests use `unittest`:
