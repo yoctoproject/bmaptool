@@ -59,6 +59,7 @@ also contribute to the mapped blocks and are also copied.
 import os
 import re
 import stat
+import struct
 import sys
 import hashlib
 import logging
@@ -259,7 +260,7 @@ class BmapCopy(object):
         self._f_image = image
         self._image_path = image.name
 
-        self._f_dest = dest
+        self._f_dest: BinaryIO = dest
         self._dest_path = dest.name
         st_data = os.fstat(self._f_dest.fileno())
         self._dest_is_regfile = stat.S_ISREG(st_data.st_mode)
@@ -790,6 +791,259 @@ class BmapCopy(object):
                 raise Error(
                     "cannot synchronize '%s': %s " % (self._dest_path, err.strerror)
                 )
+
+
+# See: https://android.googlesource.com/platform/system/core/+/refs/heads/main/libsparse/sparse_format.h
+SPARSE_HEADER_MAGIC = 0xed26ff3a
+CHUNK_TYPE_RAW = 0xCAC1
+CHUNK_TYPE_FILL = 0xCAC2
+CHUNK_TYPE_DONT_CARE = 0xCAC3
+CHUNK_TYPE_CRC32 = 0xCAC4
+
+MAJOR_VERSION = 1
+MINOR_VERSION = 0
+FILE_HEADER_SIZE = 28 # always for version 1.0
+CHUNK_HEADER_SIZE = 12 # always for version 1.0
+CHECKSUM_DONT_CARE = 0
+CHUNK_HEADER_RESERVED1 = 0
+
+
+class BmapAndroidSparseImageCopy(BmapCopy):
+    def __init__(self, image, dest, bmap=None, image_size=None):
+        super().__init__(image, dest, bmap, image_size)
+
+        self._sparse_image_chunk_cnt = 0
+        self._batch_bytes = 100 * 2**20
+        self._batch_blocks = self._batch_bytes // self.block_size
+        self._offset = 0
+
+    def _print_chunk_info(self, header):
+        blk_sz = self.block_size
+        showhash = False
+
+        unpacked_header = struct.unpack("<2H2I", header)
+        chunk_type = unpacked_header[0]
+        chunk_sz = unpacked_header[2]
+        total_sz = unpacked_header[3]
+        data_sz = total_sz - 12
+        curhash = ""
+        curtype = ""
+
+        curpos = self._f_dest.tell()
+        print("%4u %10u %10u %7u %7u" % (self._sparse_image_chunk_cnt + 1, curpos, data_sz, self._offset, chunk_sz),
+              end=" ")
+
+        if chunk_type == 0xCAC1:
+            if data_sz != (chunk_sz * blk_sz):
+                print("Raw chunk input size (%u) does not match output size (%u)"
+                        % (data_sz, chunk_sz * blk_sz))
+                return
+            else:
+                curtype = "Raw data"
+
+        elif chunk_type == 0xCAC2:
+            if data_sz != 4:
+                print("Fill chunk should have 4 bytes of fill, but this has %u"
+                        % (data_sz))
+                return
+            else:
+                fill_bin = FH.read(4)
+                fill = struct.unpack("<I", fill_bin)
+                curtype = format("Fill with 0x%08X" % (fill))
+                if showhash:
+                    h = hashlib.sha1()
+                    data = fill_bin * (blk_sz / 4);
+                    for block in range(chunk_sz):
+                        h.update(data)
+                    curhash = h.hexdigest()
+        elif chunk_type == 0xCAC3:
+            if data_sz != 0:
+                print("Don't care chunk input size is non-zero (%u)" % (data_sz))
+                return
+            else:
+                curtype = "Don't care"
+        elif chunk_type == 0xCAC4:
+            if data_sz != 4:
+                print("CRC32 chunk should have 4 bytes of CRC, but this has %u"
+                    % (data_sz))
+                return
+            else:
+                crc_bin = FH.read(4)
+                crc = struct.unpack("<I", crc_bin)
+                curtype = format("Unverified CRC32 0x%08X" % (crc))
+        else:
+            print("Unknown chunk type 0x%04X" % (chunk_type))
+            return
+
+        print("%-18s" % (curtype), end=" ")
+        print(curhash)
+
+        self._offset += chunk_sz
+
+    def _write_chunk(self, header, data=None):
+        assert(len(header) == CHUNK_HEADER_SIZE)
+
+        self._print_chunk_info(header)
+
+        try:
+            self._f_dest.write(header)
+
+            if data is not None:
+                self._f_dest.write(data)
+        except IOError as err:
+            raise Error(
+                "error while writing blocks %d-%d of '%s': %s"
+                % (start, end, self._dest_path, err)
+            )
+
+        self._sparse_image_chunk_cnt += 1
+
+
+    def _write_raw_chunk(self, buf):
+        assert(len(buf) % self.block_size == 0)
+
+        block_count = len(buf) // self.block_size
+
+        chunk_header = struct.pack("<2H2I",
+            CHUNK_TYPE_RAW,
+            CHUNK_HEADER_RESERVED1,
+            block_count,
+            CHUNK_HEADER_SIZE + len(buf),
+            )
+        self._write_chunk(chunk_header, buf)
+
+
+    def _write_dont_care_chunk(self, block_count):
+        chunk_header = struct.pack("<2H2I",
+            CHUNK_TYPE_DONT_CARE,
+            CHUNK_HEADER_RESERVED1,
+            block_count,
+            CHUNK_HEADER_SIZE,
+            )
+        self._write_chunk(chunk_header)
+
+
+    def copy(self, sync=True, verify=True):
+        """
+        Copy the image to the destination file using bmap. The 'sync' argument
+        defines whether the destination file has to be synchronized upon
+        return.  The 'verify' argument defines whether the checksum has to be
+        verified while copying.
+        """
+
+        # Create the queue for block batches and start the reader thread, which
+        # will read the image in batches and put the results to '_batch_queue'.
+        self._batch_queue = queue.Queue(self._batch_queue_len)
+        thread.start_new_thread(self._get_data, (verify,))
+
+        blocks_written = 0
+        bytes_written = 0
+        fsync_last = 0
+
+        self._sparse_image_chunk_cnt = 0
+        self._progress_started = False
+        self._progress_index = 0
+        self._progress_time = datetime.datetime.now()
+
+        # skip past the file header. we'll seek back and write it later once we
+        # know all the information that goes in it
+        self._f_dest.seek(FILE_HEADER_SIZE)
+
+        print("            input_bytes      output_blocks")
+        print("chunk    offset     number  offset  number")
+
+        # Read the image in '_batch_blocks' chunks and write them to the
+        # destination file
+        prev_end = -1
+        while True:
+            batch = self._batch_queue.get()
+            if batch is None:
+                # No more data, the image is written
+                break
+            elif batch[0] == "error":
+                # The reader thread encountered an error and passed us the
+                # exception.
+                exc_info = batch[1]
+                raise exc_info[1]
+
+            (start, end, buf) = batch[1:4]
+            batch_block_count = end - start + 1
+
+            assert len(buf) <= (batch_block_count) * self.block_size
+            assert len(buf) > (end - start) * self.block_size
+
+            # Synchronize the destination file if we reached the watermark
+            if self._dest_fsync_watermark:
+                if blocks_written >= fsync_last + self._dest_fsync_watermark:
+                    fsync_last = blocks_written
+                    self.sync()
+
+            blocks_since_previous_chunk = start - prev_end - 1
+
+            if blocks_since_previous_chunk < 0:
+                raise Error("Out-of-order bmap blocks are not supported")
+
+            if blocks_since_previous_chunk > 0:
+                self._write_dont_care_chunk(blocks_since_previous_chunk)
+
+            self._write_raw_chunk(buf)
+
+            self._batch_queue.task_done()
+            blocks_written += batch_block_count
+            bytes_written += len(buf)
+
+            prev_end = end
+
+            self._update_progress(blocks_written)
+
+        if prev_end < self.blocks_cnt:
+            self._write_dont_care_chunk(self.blocks_cnt - prev_end - 1)
+
+        if not self.image_size:
+            # The image size was unknown up until now, set it
+            self._set_image_size(bytes_written)
+
+        # This is just a sanity check - we should have written exactly
+        # 'mapped_cnt' blocks.
+        if blocks_written != self.mapped_cnt:
+            raise Error(
+                "wrote %u blocks from image '%s' to '%s', but should "
+                "have %u - bmap file '%s' does not belong to this "
+                "image"
+                % (
+                    blocks_written,
+                    self._image_path,
+                    self._dest_path,
+                    self.mapped_cnt,
+                    self._bmap_path,
+                )
+            )
+
+        print(f"sparse_image_chunk_cnt: {self._sparse_image_chunk_cnt}")
+
+        file_header = struct.pack("<I4H4I",
+            SPARSE_HEADER_MAGIC,
+            MAJOR_VERSION,
+            MINOR_VERSION,
+            FILE_HEADER_SIZE,
+            CHUNK_HEADER_SIZE,
+            self.block_size,
+            self.blocks_cnt,
+            self._sparse_image_chunk_cnt,
+            CHECKSUM_DONT_CARE
+        )
+        assert(len(file_header) == FILE_HEADER_SIZE)
+
+        self._f_dest.seek(0)
+        self._f_dest.write(file_header)
+
+        try:
+            self._f_dest.flush()
+        except IOError as err:
+            raise Error("cannot flush '%s': %s" % (self._dest_path, err))
+
+        if sync:
+            self.sync()
 
 
 class BmapBdevCopy(BmapCopy):
