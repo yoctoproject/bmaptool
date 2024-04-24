@@ -85,7 +85,7 @@ def _check_ranges(f_image, filemap, first_block, blocks_cnt, ranges, ranges_type
 
         if check[0] > check[1] or check != correct:
             raise Error(
-                "bad or unmatching %s range for file '%s': correct "
+                "bad or mismatching %s range for file '%s': correct "
                 "is %d-%d, get_%s_ranges(%d, %d) returned %d-%d"
                 % (
                     ranges_type,

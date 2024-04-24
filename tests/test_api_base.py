@@ -16,7 +16,7 @@
 
 """
 This test verifies the base bmap creation and copying API functionality. It
-generates a random sparse file, then creates a bmap fir this file and copies it
+generates a random sparse file, then creates a bmap for this file and copies it
 to a different file using the bmap. Then it compares the original random sparse
 file and the copy and verifies that they are identical.
 """
@@ -216,7 +216,7 @@ def _do_test(image, image_size, delete=True):
             compressed, f_copy.name, f_bmap1.name, image_chksum, None
         )
 
-        # Append a "file:" prefixe to make BmapCopy use urllib
+        # Append a "file:" prefix to make BmapCopy use urllib
         compressed = "file:" + compressed
         helpers.copy_and_verify_image(
             compressed, f_copy.name, f_bmap1.name, image_chksum, image_size

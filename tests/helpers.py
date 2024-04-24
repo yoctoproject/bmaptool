@@ -177,7 +177,7 @@ def generate_test_files(max_size=4 * 1024 * 1024, directory=None, delete=True):
         file_obj.close()
 
     #
-    # Generate a random sparse files
+    # Generate random sparse files
     #
 
     # The maximum size
