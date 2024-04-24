@@ -40,11 +40,11 @@ such an image compresses very well (because holes are read as all zeroes), so
 it is beneficial to distributor them as compressed files along with the bmap.
 
 Here is an example. Suppose you have a 4GiB image which contains only 100MiB of
-user data and you need to flash it to a slow USB stick. With bmap you end up
+user data, and you need to flash it to a slow USB stick. With bmap you end up
 copying only a little bit more than 100MiB of data from the image to the USB
 stick (namely, you copy only mapped blocks). This is a lot faster than copying
 all 4GiB of data. We say that it is a bit more than 100MiB because things like
-file-system meta-data (inode tables, superblocks, etc), partition table, etc
+file-system meta-data (inode tables, superblocks, etc.), partition table, etc.
 also contribute to the mapped blocks and are also copied.
 """
 
@@ -181,13 +181,13 @@ class BmapCopy(object):
     to the destination file.
 
     When the bmap is provided, it is not necessary to specify image size,
-    because the size is contained in the bmap. Otherwise, it is benefitial to
+    because the size is contained in the bmap. Otherwise, it is beneficial to
     specify the size because it enables extra sanity checks and makes it
     possible to provide the progress bar.
 
     When the image size is known either from the bmap or the caller specified
     it to the class constructor, all the image geometry description attributes
-    ('blocks_cnt', etc) are initialized by the class constructor and available
+    ('blocks_cnt', etc.) are initialized by the class constructor and available
     for the user.
 
     However, when the size is not known, some of  the image geometry
@@ -308,8 +308,8 @@ class BmapCopy(object):
         functionality which might or might not be available even if requested.
         When used as a boot service, the unavailability of the psplash service
         (due to various reasons: no screen, racing issues etc.) should not
-        break the writting process. This is why this implementation is done as
-        a best effort.
+        break the writing process. This is why this implementation is done as
+        a best-effort.
         """
 
         if os.path.exists(path) and stat.S_ISFIFO(os.stat(path).st_mode):
@@ -321,7 +321,7 @@ class BmapCopy(object):
 
     def set_progress_indicator(self, file_obj, format_string):
         """
-        Setup the progress indicator which shows how much data has been copied
+        Set up the progress indicator which shows how much data has been copied
         in percent.
 
         The 'file_obj' argument is the console file object where the progress
@@ -368,7 +368,7 @@ class BmapCopy(object):
 
         correct_chksum = self._xml.find(self._bmap_cs_attrib_name).text.strip()
 
-        # Before verifying the shecksum, we have to substitute the checksum
+        # Before verifying the checksum, we have to substitute the checksum
         # value stored in the file with all zeroes. For these purposes we
         # create private memory mapping of the bmap file.
         mapped_bmap = mmap.mmap(self._f_bmap.fileno(), 0, access=mmap.ACCESS_COPY)
@@ -399,7 +399,7 @@ class BmapCopy(object):
         try:
             self._xml = ElementTree.parse(self._f_bmap)
         except ElementTree.ParseError as err:
-            # Extrace the erroneous line with some context
+            # Extract the erroneous line with some context
             self._f_bmap.seek(0)
             xml_extract = ""
             for num, line in enumerate(self._f_bmap):
@@ -450,7 +450,7 @@ class BmapCopy(object):
             # was SHA1. Version 2.0 started supporting arbitrary checksum
             # types. A new "ChecksumType" tag was introduce to specify the
             # checksum function name. And all XML tags which contained "sha1"
-            # in their name were renamed to something more neutral. This was an
+            # in their name were renamed to something more neutral. This was a
             # change incompatible with previous formats.
             #
             # There is a special format version 1.4, which should not have been
@@ -523,7 +523,7 @@ class BmapCopy(object):
             self._progress_file.write(progress)
             self._progress_file.flush()
 
-        # Update psplash progress when configured. This is using a best effort
+        # Update psplash progress when configured. This is using a best-effort
         # strategy to not affect the writing process when psplash breaks, is
         # not available early enough or screen is not available.
         if self._psplash_pipe and self.mapped_cnt:
@@ -845,7 +845,7 @@ class BmapBdevCopy(BmapCopy):
             os.minor(st_rdev),
         )
 
-        # Check if the 'queue' sub-directory exists. If yes, then our block
+        # Check if the 'queue' subdirectory exists. If yes, then our block
         # device is entire disk. Otherwise, it is a partition, in which case we
         # need to go one level up in the sysfs hierarchy.
         if not os.path.exists(self._sysfs_base + "queue"):
@@ -872,7 +872,7 @@ class BmapBdevCopy(BmapCopy):
         # 1. Switch to the 'none' (the successor of 'noop' since the switch to
         #    multiqueue schedulers) I/O scheduler if it is available - sequential
         #    write to the block device becomes a lot faster comparing to CFQ.
-        # 2. Limit the write buffering - we do not need the kernel to buffer a lot of
+        # 2. Limit write buffering - we do not need the kernel to buffer a lot of
         #    the data we send to the block device, because we write sequentially.
         #    Excessive buffering would make some systems quite unresponsive.
         #    This was observed e.g. in Fedora 17.
