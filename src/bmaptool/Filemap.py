@@ -132,7 +132,7 @@ class _FilemapBase(object):
 
     def block_is_mapped(self, block):  # pylint: disable=W0613,R0201
         """
-        This method has has to be implemented by child classes. It returns
+        This method has to be implemented by child classes. It returns
         'True' if block number 'block' of the image file is mapped and 'False'
         otherwise.
         """
@@ -141,7 +141,7 @@ class _FilemapBase(object):
 
     def block_is_unmapped(self, block):  # pylint: disable=W0613,R0201
         """
-        This method has has to be implemented by child classes. It returns
+        This method has to be implemented by child classes. It returns
         'True' if block number 'block' of the image file is not mapped (hole)
         and 'False' otherwise.
         """
@@ -150,7 +150,7 @@ class _FilemapBase(object):
 
     def get_mapped_ranges(self, start, count):  # pylint: disable=W0613,R0201
         """
-        This method has has to be implemented by child classes. This is a
+        This method has to be implemented by child classes. This is a
         generator which yields ranges of mapped blocks in the file. The ranges
         are tuples of 2 elements: [first, last], where 'first' is the first
         mapped block and 'last' is the last mapped block.
@@ -163,7 +163,7 @@ class _FilemapBase(object):
 
     def get_unmapped_ranges(self, start, count):  # pylint: disable=W0613,R0201
         """
-        This method has has to be implemented by child classes. Just like
+        This method has to be implemented by child classes. Just like
         'get_mapped_ranges()', but yields unmapped block ranges instead
         (holes).
         """
@@ -181,7 +181,7 @@ def _lseek(file_obj, offset, whence):
     'file_obj' and with specified 'offset' and 'whence'. The 'whence'
     argument is supposed to be either '_SEEK_DATA' or '_SEEK_HOLE'. When
     there is no more data or hole starting from 'offset', this function
-    returns '-1'.  Otherwise the data or hole position is returned."""
+    returns '-1'.  Otherwise, the data or hole position is returned."""
 
     try:
         return os.lseek(file_obj.fileno(), offset, whence)
@@ -207,7 +207,7 @@ class FilemapSeek(_FilemapBase):
     """
 
     def __init__(self, image):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
 
         # Call the base class constructor first
         _FilemapBase.__init__(self, image)
@@ -259,7 +259,7 @@ class FilemapSeek(_FilemapBase):
         tmp_obj.close()
 
     def block_is_mapped(self, block):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         offs = _lseek(self._f_image, block * self.block_size, _SEEK_DATA)
         if offs == -1:
             result = False
@@ -270,7 +270,7 @@ class FilemapSeek(_FilemapBase):
         return result
 
     def block_is_unmapped(self, block):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         return not self.block_is_mapped(block)
 
     def _get_ranges(self, start, count, whence1, whence2):
@@ -301,7 +301,7 @@ class FilemapSeek(_FilemapBase):
             yield (start_blk, end_blk)
 
     def get_mapped_ranges(self, start, count):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         _log.debug(
             "FilemapSeek: get_mapped_ranges(%d,  %d(%d))"
             % (start, count, start + count - 1)
@@ -309,7 +309,7 @@ class FilemapSeek(_FilemapBase):
         return self._get_ranges(start, count, _SEEK_DATA, _SEEK_HOLE)
 
     def get_unmapped_ranges(self, start, count):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         _log.debug(
             "FilemapSeek: get_unmapped_ranges(%d,  %d(%d))"
             % (start, count, start + count - 1)
@@ -336,8 +336,8 @@ _FIEMAP_IOCTL = 0xC020660B
 # reading the block map
 _FIEMAP_FLAG_SYNC = 0x00000001
 # Size of the buffer for 'struct fiemap_extent' elements which will be used
-# when invoking the FIEMAP ioctl. The larger is the buffer, the less times the
-# FIEMAP ioctl will be invoked.
+# when invoking the FIEMAP ioctl. With a larger buffer, the FIEMAP ioctl will
+# be invoked fewer times.
 _FIEMAP_BUFFER_SIZE = 256 * 1024
 
 
@@ -352,8 +352,8 @@ class FilemapFiemap(_FilemapBase):
 
     def __init__(self, image):
         """
-        Initialize a class instance. The 'image' argument is full the file
-        object to operate on.
+        Initialize a class instance. The 'image' argument is the file object
+        to operate on.
         """
 
         # Call the base class constructor first
@@ -433,7 +433,7 @@ class FilemapFiemap(_FilemapBase):
         return struct.unpack(_FIEMAP_FORMAT, self._buf[:_FIEMAP_SIZE])
 
     def block_is_mapped(self, block):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         struct_fiemap = self._invoke_fiemap(block, 1)
 
         # The 3rd element of 'struct_fiemap' is the 'fm_mapped_extents' field.
@@ -444,7 +444,7 @@ class FilemapFiemap(_FilemapBase):
         return result
 
     def block_is_unmapped(self, block):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         return not self.block_is_mapped(block)
 
     def _unpack_fiemap_extent(self, index):
@@ -505,7 +505,7 @@ class FilemapFiemap(_FilemapBase):
             block = extent_block + extent_count
 
     def get_mapped_ranges(self, start, count):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         _log.debug(
             "FilemapFiemap: get_mapped_ranges(%d,  %d(%d))"
             % (start, count, start + count - 1)
@@ -531,7 +531,7 @@ class FilemapFiemap(_FilemapBase):
         yield (first_prev, last_prev)
 
     def get_unmapped_ranges(self, start, count):
-        """Refer the '_FilemapBase' class for the documentation."""
+        """Refer to the '_FilemapBase' class for the documentation."""
         _log.debug(
             "FilemapFiemap: get_unmapped_ranges(%d,  %d(%d))"
             % (start, count, start + count - 1)
