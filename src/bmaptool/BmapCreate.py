@@ -18,7 +18,7 @@
 This module implements the block map (bmap) creation functionality and provides
 the corresponding API in form of the 'BmapCreate' class.
 
-The idea is that while images files may generally be very large (e.g., 4GiB),
+The idea is that while image files may generally be very large (e.g., 4GiB),
 they may nevertheless contain only little real data, e.g., 512MiB. This data
 are files, directories, file-system meta-data, partition table, etc. When
 copying the image to the target device, you do not have to copy all the 4GiB of
@@ -264,7 +264,7 @@ class BmapCreate(object):
             "    <!-- The block map which consists of elements which may either be a\n"
         )
         xml += "         range of blocks or a single block. The 'chksum' attribute\n"
-        xml += "         (if present) is the checksum of this blocks range. -->\n"
+        xml += "         (if present) is the checksum of this block range. -->\n"
         xml += "    <BlockMap>\n"
         # pylint: enable=C0301
 
