@@ -17,10 +17,10 @@
 """
 This module allows opening and reading local and remote files and decompress
 them on-the-fly if needed. Remote files are read using urllib (except of
-"ssh://" URLs, which are handled differently). Supported file extentions are:
+"ssh://" URLs, which are handled differently). Supported file extensions are:
 'bz2', 'gz', 'xz', 'lzo', 'zst' and a "tar" version of them: 'tar.bz2', 'tbz2',
 'tbz', 'tb2', 'tar.gz', 'tgz', 'tar.xz', 'txz', 'tar.lzo', 'tzo', 'tar.lz4',
-'tlz4', '.tar.zst', 'tzst'.
+'tlz4', 'tar.zst', 'zst'.
 This module uses the following system programs for decompressing: pbzip2, bzip2,
 gzip, pigz, xz, lzop, lz4, zstd, tar and unzip.
 """
@@ -230,8 +230,8 @@ class TransRead(object):
     def _read_thread(self, f_from, f_to):
         """
         This function is used when reading compressed files. It runs in a
-        spearate thread, reads data from the 'f_from' file-like object, and
-        writes them to the 'f_to' file-like object. 'F_from' may be a urllib
+        separate thread, reads data from the 'f_from' file-like object, and
+        writes them to the 'f_to' file-like object. 'F_from' may be an urllib
         object, while 'f_to' is usually stdin of the decompressor process.
         """
 
@@ -245,13 +245,13 @@ class TransRead(object):
                 f_to.write(buf)
         finally:
             # This will make sure the process decompressor gets EOF and exits, as
-            # well as ublocks processes waiting on decompressor's stdin.
+            # well as unblocks processes waiting on decompressor's stdin.
             f_to.close()
 
     def _open_compressed_file(self):
         """
         Detect file compression type and open it with the corresponding
-        compression module, or just plain 'open() if the file is not
+        compression module, or just plain open() if the file is not
         compressed.
         """
 
@@ -478,7 +478,7 @@ class TransRead(object):
     def _open_url_ssh(self, parsed_url):
         """
         This function opens a file on a remote host using SSH. The URL has to
-        have this format: "ssh://username@hostname:path". Currently we only
+        have this format: "ssh://username@hostname:path". Currently, we only
         support password-based authentication.
         """
 
@@ -604,7 +604,7 @@ class TransRead(object):
                 _log.error(f"Error parsing line {e.lineno} of {e.filename}: {e.msg}")
 
         if username and password:
-            # Unfortunately, in order to handle URLs which contain user name
+            # Unfortunately, in order to handle URLs which contain username
             # and password (e.g., http://user:password@my.site.org), we need to
             # do few extra things.
             new_url = list(parsed_url)
@@ -626,11 +626,11 @@ class TransRead(object):
         urllib.request.install_opener(opener)
 
         # Open the URL. First try with a short timeout, and print a message
-        # which should supposedly give the a clue that something may be going
+        # which should supposedly give a clue that something may be going
         # wrong.
         # The overall purpose of this is to improve user experience. For
-        # example, if one tries to open a file but did not setup the proxy
-        # environment variables propely, there will be a very long delay before
+        # example, if one tries to open a file but did not set up the proxy
+        # environment variables properly, there will be a very long delay before
         # the failure message. And it is much nicer to pre-warn the user early
         # about something possibly being wrong.
         for timeout in (10, None):
@@ -654,7 +654,7 @@ class TransRead(object):
 
     def read(self, size=-1):
         """
-        Read the data from the file or URL and and uncompress it on-the-fly if
+        Read the data from the file or URL and uncompress it on-the-fly if
         necessary.
         """
 
