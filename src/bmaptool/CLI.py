@@ -526,7 +526,12 @@ def copy_command(args):
             writer = BmapCopy.BmapBdevCopy(image_obj, dest_obj, bmap_obj, image_size)
         else:
             dest_str = "file '%s'" % os.path.basename(args.dest)
-            writer = BmapCopy.BmapCopy(image_obj, dest_obj, bmap_obj, image_size)
+            if args.format == "simg":
+                writer = BmapCopy.BmapAndroidSparseImageCopy(image_obj, dest_obj, bmap_obj, image_size)
+            elif args.format == "raw":
+                writer = BmapCopy.BmapCopy(image_obj, dest_obj, bmap_obj, image_size)
+            else:
+                error_out(f"Unsupported destination format: {args.format}")
     except BmapCopy.Error as err:
         error_out(err)
 
@@ -714,6 +719,10 @@ def parse_arguments():
     # The --bmap option
     text = "the block map file for the image"
     parser_copy.add_argument("--bmap", help=text)
+    parser_copy.add_argument("--format",
+                             help="format of the destination file",
+                             choices=['raw', 'simg'],
+                             default="raw")
 
     # The --nobmap option
     text = "allow copying without a bmap file"
