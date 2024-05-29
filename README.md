@@ -326,6 +326,9 @@ Next install the project in editable mode with development dependencies:
 pip install -e '.[dev]'
 ```
 
+Note: You may need to install the development package for `libgpgme` on your
+      system. Depending on your OS this may be called `libgpgme-dev`.
+
 Finally, to run tests use `unittest`:
 
 ```bash
