@@ -323,7 +323,7 @@ python3 -m venv .venv
 Next install the project in editable mode with development dependencies:
 
 ```bash
-pip install .[dev]
+pip install -m .[dev]
 ```
 
 Note: You may need to install the development package for `libgpgme` on your
