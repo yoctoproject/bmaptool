@@ -121,7 +121,7 @@ class TestCompat(unittest.TestCase):
 
     def _do_test_older_bmapcopy(self, bmap_path, modref):
         """
-        Test an older version of BmapCopy class, referenced to by the 'modref'
+        Test an older version of BmapCopy class, referenced by the 'modref'
         argument. The 'bmap_path' argument is the bmap file path to test with.
         """
 

@@ -88,7 +88,7 @@ def get_block_size(file_obj):
 
 def program_is_available(name):
     """
-    This is a helper function which check if the external program 'name' is
+    This is a helper function which checks if the external program 'name' is
     available in the system.
     """
 

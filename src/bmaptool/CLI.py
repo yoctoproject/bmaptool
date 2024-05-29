@@ -238,7 +238,7 @@ def verify_detached_bmap_signature(args, bmap_obj, bmap_path):
 def verify_clearsign_bmap_signature(args, bmap_obj):
     """
     This is a helper function for 'verify_bmap_signature()' which handles the
-    clarsign signature case.
+    clearsign signature case.
     """
 
     if args.bmap_sig:
@@ -307,7 +307,7 @@ def verify_bmap_signature(args, bmap_obj, bmap_path):
     In case of the clearsign signature, the bmap file has "invalid" format,
     meaning that the proper bmap XML contents is in the GPG clearsign
     container. The XML contents has to be extracted from the container before
-    further processing. And this is be done even if user specified the
+    further processing. And this is done even if user specified the
     --no-sig-verify option. This function returns an open file object with the
     extracted XML bmap file contents in this case. Otherwise, this function
     returns None.
@@ -464,7 +464,7 @@ def open_files(args):
     # We just create the "/dev/misspelled" file, write the data there, and
     # report success. Later on the user finds out that the image was not really
     # written to the device, and gets confused. Similar confusion may happen if
-    # the destination file is not a special device for some reasons.
+    # the destination file is not a special device for some reason.
     if os.path.normpath(args.dest).startswith("/dev/"):
         if not os.path.exists(args.dest):
             log.warning(
@@ -478,7 +478,7 @@ def open_files(args):
             )
 
     # Try to open the destination file. If it does not exist, a new regular
-    # file will be created. If it exists and it is a regular file - it'll be
+    # file will be created. If it exists, and it is a regular file, it'll be
     # truncated. If this is a block device, it'll just be opened.
     dest_is_blkdev = False
     try:
@@ -623,7 +623,7 @@ def create_command(args):
     target device.
     """
 
-    # Create and setup the output stream
+    # Create and set up the output stream
     if args.output:
         try:
             output = open(args.output, "w+")
@@ -724,7 +724,7 @@ def parse_arguments():
     parser_copy.add_argument("--bmap-sig", help=text)
 
     # The --no-sig-verify option
-    text = "do not verify bmap file GPG signatrue"
+    text = "do not verify bmap file GPG signature"
     parser_copy.add_argument("--no-sig-verify", action="store_true", help=text)
 
     # The --no-verify option
@@ -778,7 +778,7 @@ def setup_logger(loglevel):
 
         def format(self, record):
             """
-            The formatter which which simply prefixes all debugging messages
+            The formatter which simply prefixes all debugging messages
             with a time-stamp.
             """
 

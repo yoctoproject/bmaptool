@@ -53,7 +53,7 @@ class TestBmapHelpers(unittest.TestCase):
             self.assertTrue(fstype)
 
     def test_get_file_system_type_no_fstype_found(self):
-        """Check error raised when supplied file doesnt exist"""
+        """Check error raised when supplied file doesn't exist"""
 
         directory = os.path.dirname(__file__)
         fobj = os.path.join(directory, "BmapHelpers/file/does/not/exist")
@@ -73,7 +73,7 @@ class TestBmapHelpers(unittest.TestCase):
             self.assertTrue(fstype)
 
     def test_is_zfs_configuration_compatible_enabled(self):
-        """Check compatiblilty check is true when zfs param is set correctly"""
+        """Check compatibility check is true when zfs param is set correctly"""
 
         with tempfile.NamedTemporaryFile(
             "w+", prefix="testfile_", delete=True, dir=".", suffix=".txt"
@@ -85,7 +85,7 @@ class TestBmapHelpers(unittest.TestCase):
                 self.assertTrue(BmapHelpers.is_zfs_configuration_compatible())
 
     def test_is_zfs_configuration_compatible_disabled(self):
-        """Check compatiblilty check is false when zfs param is set incorrectly"""
+        """Check compatibility check is false when zfs param is set incorrectly"""
 
         with tempfile.NamedTemporaryFile(
             "w+", prefix="testfile_", delete=True, dir=".", suffix=".txt"
@@ -116,8 +116,8 @@ class TestBmapHelpers(unittest.TestCase):
             if not BmapHelpers.is_zfs_configuration_compatible():
                 raise BmapHelpers.Error
 
-    def test_is_zfs_configuration_compatible_notinstalled(self):
-        """Check compatiblilty check passes when zfs not installed"""
+    def test_is_zfs_configuration_compatible_not_installed(self):
+        """Check compatibility check passes when zfs not installed"""
 
         directory = os.path.dirname(__file__)
         filepath = os.path.join(directory, "BmapHelpers/file/does/not/exist")
@@ -129,7 +129,7 @@ class TestBmapHelpers(unittest.TestCase):
     def test_is_compatible_file_system_zfs_valid(
         self, mock_get_fs_type
     ):  # pylint: disable=unused-argument
-        """Check compatiblilty check passes when zfs param is set correctly"""
+        """Check compatibility check passes when zfs param is set correctly"""
 
         with tempfile.NamedTemporaryFile(
             "w+", prefix="testfile_", delete=True, dir=".", suffix=".img"
@@ -144,7 +144,7 @@ class TestBmapHelpers(unittest.TestCase):
     def test_is_compatible_file_system_zfs_invalid(
         self, mock_get_fs_type
     ):  # pylint: disable=unused-argument
-        """Check compatiblilty check fails when zfs param is set incorrectly"""
+        """Check compatibility check fails when zfs param is set incorrectly"""
 
         with tempfile.NamedTemporaryFile(
             "w+", prefix="testfile_", delete=True, dir=".", suffix=".img"
@@ -159,7 +159,7 @@ class TestBmapHelpers(unittest.TestCase):
     def test_is_compatible_file_system_ext4(
         self, mock_get_fs_type
     ):  # pylint: disable=unused-argument
-        """Check non-zfs file systems pass compatiblilty checks"""
+        """Check non-zfs file systems pass compatibility checks"""
 
         with tempfile.NamedTemporaryFile(
             "w+", prefix="testfile_", delete=True, dir=".", suffix=".img"
