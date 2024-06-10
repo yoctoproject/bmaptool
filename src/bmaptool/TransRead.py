@@ -600,7 +600,7 @@ class TransRead(object):
                     password = auth[2]
             except FileNotFoundError:
                 pass
-            except netc.NetrcParseError as e:
+            except netrc.NetrcParseError as e:
                 _log.error(f"Error parsing line {e.lineno} of {e.filename}: {e.msg}")
 
         if username and password:

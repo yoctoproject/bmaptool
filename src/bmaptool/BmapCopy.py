@@ -246,7 +246,7 @@ class BmapCopy(object):
         self.mapped_percent = None
 
         self._f_bmap = None
-        self._f_bmap_path = None
+        self._bmap_path = None
 
         self._progress_started = None
         self._progress_index = None
