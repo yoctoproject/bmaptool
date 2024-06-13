@@ -1,18 +1,27 @@
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-name: bmaptool
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: bmaptool
 Upstream-Contact: Trevor Woerner <twoerner@gmail.com>
-Source: https://github.com/yoctoproject/bmaptool
-  .
+Source: https://github.com/yoctoproject/bmaptool.git
+Comment:
   The initial package was put together by Ed Bartosh <eduard.bartosh@intel.com>
   on Sun Oct 27 22:32:19 EEST 2012.
 
 Files: *
-Copyright: © 2012-2013 Intel, Inc.
+Copyright: © 2012-2014 Intel, Inc.
 License: GPL-2
 
 Files: debian/*
-Copyright: © 2012-2013 Intel, Inc.
+Copyright:
+ © 2012-2013 Intel, Inc.
+ © 2014-2018 Simon McVittie
 License: GPL-2
+
+Files:
+ debian/tests/web-server.py
+Copyright:
+ © 2017-2019 Red Hat Inc.
+License: LGPL-2.1+
+Comment: Copied from the Flatpak test suite
 
 License: GPL-2
   This program is free software; you can redistribute it and/or modify
@@ -26,3 +35,21 @@ License: GPL-2
 Comment:
   On Debian systems, the full text of the GPL v2 can be found
   in /usr/share/common-licenses/GPL-2.
+
+License: LGPL-2.1+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+Comment:
+ On Debian systems, the full text of the GNU Lesser General Public License
+ version 2.1 can be found in the file '/usr/share/common-licenses/LGPL-2.1'.

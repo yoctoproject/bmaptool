@@ -7,7 +7,7 @@ bmaptool (3.8.0) unstable; urgency=low
     variations
   * switch to use an X.Y.Z versioning number scheme
 
- -- Trevor Woerner <twoerner@gmail.com> Mon, 18 Mar 2024 23:44:10 -0400
+ -- Trevor Woerner <twoerner@gmail.com>  Mon, 18 Mar 2024 23:44:10 -0400
 
 bmap-tools (3.7) unstable; urgency=low
 
@@ -17,7 +17,7 @@ bmap-tools (3.7) unstable; urgency=low
   * Add functionality for copying from standard input (#99)
   * Switch from gpg to gpgme module (#103)
 
- -- Artem Bityutskiy <artem.bityutskiy@linux.intel.com> Wed, 02 Aug 2023 15:11:26 +0300
+ -- Artem Bityutskiy <artem.bityutskiy@linux.intel.com>  Wed, 02 Aug 2023 15:11:26 +0300
 
 bmap-tools (3.6) unstable; urgency=low
 
@@ -25,14 +25,14 @@ bmap-tools (3.6) unstable; urgency=low
   * Added the 'zstd' compression type support.
   * Add '--psplash-pipe' option for interacting with psplash.
 
- -- Artem Bityutskiy <artem.bityutskiy@linux.intel.com> Tue, 02 Feb 2021 14:08:41 +0200
+ -- Artem Bityutskiy <artem.bityutskiy@linux.intel.com>  Tue, 02 Feb 2021 14:08:41 +0200
 
 bmap-tools (3.5) unstable; urgency=low
 
   * Fixed copying of compressed files from URLs
   * Python 3.x support fixes and improvements.
 
- -- Artem Bityutskiy <artem.bityutskiy@linux.intel.com> Thu, 23 Aug 2018 10:34:31 +0300
+ -- Artem Bityutskiy <artem.bityutskiy@linux.intel.com>  Thu, 23 Aug 2018 10:34:31 +0300
 
 bmap-tools (3.4) unstable; urgency=low
 

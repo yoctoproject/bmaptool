@@ -2,31 +2,47 @@ Source: bmaptool
 Maintainer: Trevor Woerner <twoerner@gmail.com>
 Section: utils
 Priority: optional
-Build-Depends: debhelper (>= 9),
-               python3 (>= 3.8),
-               python3-setuptools,
-Standards-Version: 3.8.4
-XS-Python-Version: >= 3.8
+Build-Depends:
+ debhelper-compat (= 10),
+ dh-python,
+ python3-all,
+ python3-setuptools,
+ pybuild-plugin-pyproject,
+ python3-hatchling,
+ python3-gpg,
+ python3-six,
+ python3-defusedxml,
+ python3-all-dev,
+ python3-pytest,
+Standards-Version: 4.5.0
+Vcs-Git: https://github.com/yoctoproject/bmaptool.git
+Vcs-Browser: https://github.com/yoctoproject/bmaptool
+Homepage: https://github.com/yoctoproject/bmaptool
+Rules-Requires-Root: no
+X-Python3-Version: >= 3.8
 
 Package: bmaptool
 Architecture: all
-Depends: python (>=3.8),
-	 python-gpgme,
-         ${misc:Depends},
-         ${python:Depends},
-	 bzip2,
-	 pbzip2,
-	 gzip,
-	 pigz,
-	 lzop,
-	 liblz4-tool,
-	 xz-utils,
-	 tar,
-	 unzip,
-	 zstd
-Description: Tools to generate block map (AKA bmap) and flash images using
- bmap. bmaptool is a generic tool for creating the block map (bmap) for a file,
- and copying files using the block map. The idea is that large file containing
- unused blocks, like raw system image files, can be copied or flashed a lot
- faster with bmaptool than with traditional tools like "dd" or "cp". See
- source.tizen.org/documentation/reference/bmaptool for more information.
+Depends:
+ python3,
+ python3-gpg,
+ python3-defusedxml,
+ ${misc:Depends},
+ ${python3:Depends},
+Recommends:
+ bzip2,
+ lzop,
+ xz-utils,
+Suggests:
+ lz4,
+ pbzip2,
+ pigz,
+ unzip,
+Provides:
+ bmaptool (= ${binary:Version}),
+Description: tool to flash image files to block devices using the block map
+ bmaptool is a generic tool for creating the block map (bmap) for a
+ file, and copying files using the block map. The idea is that large
+ file containing unused blocks, like raw system image files, can be
+ copied or flashed a lot faster with bmaptool than with traditional
+ tools like "dd" or "cp".

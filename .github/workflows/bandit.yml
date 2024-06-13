@@ -1,0 +1,27 @@
+name: Security check - Bandit
+
+on:
+  push:
+    branches: [ "*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      checks: write # for bandit-report-artifacts to publish the checks
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for bandit-report-artifacts to upload results
+      actions: read # only on private (maybe?) required to get the Action run status
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run bandit
+      uses: VCTLabs/bandit-report-artifacts@v2
+      with:
+        project_path: src
+        ignore_failure: false
+        config_file: pyproject.toml
