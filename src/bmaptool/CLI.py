@@ -139,7 +139,12 @@ class Signature(NamedTuple):
     uid: str
 
 
-def verify_bmap_signature_gpgme(bmap_obj, detached_sig):
+def verify_bmap_signature_gpgme(bmap_obj, detached_sig, keyring):
+    if keyring:
+        error_out(
+            "Python gpgme binding is not able to verify "
+            "signatures against a custom keyring."
+        )
     try:
         import gpg
     except ImportError:
@@ -187,8 +192,17 @@ def verify_bmap_signature_gpgme(bmap_obj, detached_sig):
     ]
 
 
-def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv):
+def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv, keyring):
     with tempfile.TemporaryDirectory(suffix=".bmaptool.gnupg") as td:
+        if keyring:
+            if gpgargv[0] == "gpg":
+                gpgargv.extend(
+                    [
+                        f"--homedir={td}",
+                        "--no-default-keyring",
+                    ]
+                )
+            gpgargv.append(f"--keyring={keyring}")
         if detached_sig:
             with open(f"{td}/sig", "wb") as f:
                 shutil.copyfileobj(detached_sig, f)
@@ -237,13 +251,13 @@ def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv):
         ]
 
 
-def verify_bmap_signature_gpgv(bmap_obj, detached_sig):
+def verify_bmap_signature_gpgv(bmap_obj, detached_sig, keyring):
     return verify_bmap_signature_gpgbin(
-        bmap_obj, detached_sig, ["gpgv", "--output=-", "--status-fd=2"]
+        bmap_obj, detached_sig, ["gpgv", "--output=-", "--status-fd=2"], keyring
     )
 
 
-def verify_bmap_signature_gpg(bmap_obj, detached_sig):
+def verify_bmap_signature_gpg(bmap_obj, detached_sig, keyring):
     return verify_bmap_signature_gpgbin(
         bmap_obj,
         detached_sig,
@@ -257,6 +271,7 @@ def verify_bmap_signature_gpg(bmap_obj, detached_sig):
             "-",
             "--status-fd=2",
         ],
+        keyring,
     )
 
 
@@ -317,6 +332,10 @@ def verify_bmap_signature(args, bmap_obj, bmap_path, is_url):
                 detached_sig = TransRead.TransRead(_add_ext(bmap_path, ".sig"))
             except TransRead.Error:
                 # No detached signatures found
+                if args.fingerprint:
+                    error_out("no signature found but --fingerprint given")
+                if args.keyring:
+                    error_out("no signature found but --keyring given")
                 return None
 
         log.info("discovered signature file for bmap '%s'" % detached_sig.name)
@@ -327,12 +346,16 @@ def verify_bmap_signature(args, bmap_obj, bmap_path, is_url):
         "gpgv": verify_bmap_signature_gpgv,
     }
     have_method = set()
-    try:
-        import gpg
 
-        have_method.add("gpgme")
-    except ImportError:
-        pass
+    if not args.keyring:
+        # The python gpgme binding is not able to verify against a custom
+        # keyring. Only try this method if we have no keyring.
+        try:
+            import gpg
+
+            have_method.add("gpgme")
+        except ImportError:
+            pass
     if shutil.which("gpg") is not None:
         have_method.add("gpg")
     if shutil.which("gpgv") is not None:
@@ -342,10 +365,10 @@ def verify_bmap_signature(args, bmap_obj, bmap_path, is_url):
         error_out("Cannot verify GPG signature without GPG")
 
     for method in ["gpgme", "gpgv", "gpg"]:
-        log.info(f"Trying to verify signature using {method}")
         if method not in have_method:
             continue
-        plaintext, sigs = methods[method](bmap_obj, detached_sig)
+        log.info(f"Trying to verify signature using {method}")
+        plaintext, sigs = methods[method](bmap_obj, detached_sig, args.keyring)
         break
     bmap_obj.seek(0)
 
@@ -359,6 +382,12 @@ def verify_bmap_signature(args, bmap_obj, bmap_path, is_url):
                 "contain any valid signatures"
             )
         else:
+            if args.fingerprint and args.fingerprint not in [sig.fpr for sig in sigs]:
+                error_out(
+                    f"requested fingerprint {args.fingerprint} "
+                    "did not sign the bmap file. Only have these sigs: "
+                    + ("".join([f"\n   * {sig.fpr}" for sig in sigs]))
+                )
             for sig in sigs:
                 if sig.valid:
                     log.info(
@@ -574,6 +603,12 @@ def copy_command(args):
 
     if args.bmap_sig and args.no_sig_verify:
         error_out("--bmap-sig and --no-sig-verify cannot be used together")
+
+    if args.no_sig_verify and args.keyring:
+        error_out("--no-sig-verify and --keyring cannot be used together")
+
+    if args.no_sig_verify and args.fingerprint:
+        error_out("--no-sig-verify and --fingerprint cannot be used together")
 
     image_obj, dest_obj, bmap_obj, bmap_path, image_size, dest_is_blkdev = open_files(
         args
@@ -807,6 +842,14 @@ def parse_arguments():
     # The --no-sig-verify option
     text = "do not verify bmap file GPG signature"
     parser_copy.add_argument("--no-sig-verify", action="store_true", help=text)
+
+    # The --keyring option
+    text = "the GPG keyring to verify the GPG signature on the bmap file"
+    parser_copy.add_argument("--keyring", help=text)
+
+    # The --fingerprint option
+    text = "the GPG fingerprint that is expected to have signed the bmap file"
+    parser_copy.add_argument("--fingerprint", help=text)
 
     # The --no-verify option
     text = "do not verify the data checksum while writing"
