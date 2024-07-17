@@ -335,6 +335,10 @@ Finally, to run tests use `unittest`:
 python3 -m unittest -bv
 ```
 
+On platforms without hatch or venv you can also directly execute the tests:
+
+    PATH=tests/bin:$PATH PYTHONPATH=src python3 -m unittest -bv
+
 ## Project and maintainer
 
 The bmaptool project implements bmap-related tools and API modules. The entire
