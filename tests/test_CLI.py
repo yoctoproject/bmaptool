@@ -61,6 +61,56 @@ class TestCLI(unittest.TestCase):
             b"successfully verified bmap file signature", completed_process.stderr
         )
 
+    def test_valid_signature_fingerprint(self):
+        assert testkeys["correct"].fpr is not None
+        completed_process = subprocess.run(
+            [
+                "bmaptool",
+                "copy",
+                "--bmap",
+                "tests/test-data/signatures/test.image.bmap.v2.0correct.asc",
+                "--fingerprint",
+                testkeys["correct"].fpr,
+                "tests/test-data/test.image.gz",
+                self.tmpfile,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(completed_process.returncode, 0)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"successfully verified bmap file signature", completed_process.stderr
+        )
+
+    def test_valid_signature_fingerprint_keyring(self):
+        assert testkeys["correct"].fpr is not None
+        completed_process = subprocess.run(
+            [
+                "bmaptool",
+                "copy",
+                "--bmap",
+                "tests/test-data/signatures/test.image.bmap.v2.0correct.asc",
+                "--fingerprint",
+                testkeys["correct"].fpr,
+                "--keyring",
+                testkeys["correct"].gnupghome + ".keyring",
+                "tests/test-data/test.image.gz",
+                self.tmpfile,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            # should work without GNUPGHOME set because we supply --keyring
+            env={k: v for k, v in os.environ.items() if k != "GNUPGHOME"},
+        )
+        self.assertEqual(completed_process.returncode, 0)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"successfully verified bmap file signature", completed_process.stderr
+        )
+
     def test_unknown_signer(self):
         completed_process = subprocess.run(
             [
@@ -141,6 +191,29 @@ class TestCLI(unittest.TestCase):
             b"successfully verified bmap file signature", completed_process.stderr
         )
 
+    def test_fingerprint_without_signature(self):
+        assert testkeys["correct"].fpr is not None
+        completed_process = subprocess.run(
+            [
+                "bmaptool",
+                "copy",
+                "--bmap",
+                "tests/test-data/test.image.bmap.v2.0",
+                "--fingerprint",
+                testkeys["correct"].fpr,
+                "tests/test-data/test.image.gz",
+                self.tmpfile,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(completed_process.returncode, 1)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"no signature found but --fingerprint given", completed_process.stderr
+        )
+
     def setUp(self):
         try:
             import gpg
@@ -160,8 +233,6 @@ class TestCLI(unittest.TestCase):
                 certify=True,
             )
             key.fpr = dmkey.fpr
-            with open(f"{key.gnupghome}.keyring", "wb") as f:
-                f.write(context.key_export_minimal())
             for bmapv in ["2.0", "1.4"]:
                 testp = "tests/test-data"
                 imbn = "test.image.bmap.v"
@@ -184,6 +255,10 @@ class TestCLI(unittest.TestCase):
                             bmapcontent, mode=gpg.constants.sig.mode.DETACH
                         )
                         detsigf.write(signed_data)
+            # the file supplied to gpgv via --keyring must not be armored
+            context.armor = False
+            with open(f"{key.gnupghome}.keyring", "wb") as f:
+                f.write(context.key_export_minimal())
 
         self.tmpfile = tempfile.mkstemp(prefix="testfile_", dir=".")[1]
         os.environ["GNUPGHOME"] = testkeys["correct"].gnupghome
