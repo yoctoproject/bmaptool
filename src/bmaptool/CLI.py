@@ -39,6 +39,8 @@ import traceback
 import shutil
 import io
 import pathlib
+import subprocess
+import re
 from typing import NamedTuple
 from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
@@ -184,6 +186,79 @@ def verify_bmap_signature_gpgme(bmap_obj, detached_sig):
     ]
 
 
+def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv):
+    with tempfile.TemporaryDirectory(suffix=".bmaptool.gnupg") as td:
+        if detached_sig:
+            with open(f"{td}/sig", "wb") as f:
+                shutil.copyfileobj(detached_sig, f)
+            gpgargv.append(f"{td}/sig")
+        with open(f"{td}/bmap", "wb") as f:
+            shutil.copyfileobj(bmap_obj, f)
+        gpgargv.append(f"{td}/bmap")
+        sp = subprocess.Popen(
+            gpgargv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        (output, error) = sp.communicate()
+        if sp.returncode > 0:
+            if error.find(b"[GNUPG:] NO_PUBKEY "):
+                error_out("No matching key found")
+            error_out("Failed to validate PGP signature")
+
+        # regexes are from patatt and b4
+        short_fpr = None
+        uid = None
+        gs_matches = re.search(
+            rb"^\[GNUPG:] GOODSIG ([0-9A-F]+)\s+(.*)$", error, flags=re.M
+        )
+        if gs_matches:
+            good = True
+            short_fpr, uid = gs_matches.groups()
+        vs_matches = re.search(
+            rb"^\[GNUPG:] VALIDSIG ([0-9A-F]+) (\d{4}-\d{2}-\d{2}) (\d+)",
+            error,
+            flags=re.M,
+        )
+        if vs_matches:
+            valid = True
+            fpr, signdate, signepoch = vs_matches.groups()
+        if not fpr.endswith(short_fpr):
+            error_out("good fingerprint does not match valid fingerprint")
+        if (b': Good signature from "' + uid + b'"') not in error:
+            log.warning("Unable to find good signature in gpg stderr output")
+        return output, [
+            Signature(
+                good and valid,
+                fpr.decode(),
+                uid.decode(),
+            )
+        ]
+
+
+def verify_bmap_signature_gpgv(bmap_obj, detached_sig):
+    return verify_bmap_signature_gpgbin(
+        bmap_obj, detached_sig, ["gpgv", "--status-fd=2"]
+    )
+
+
+def verify_bmap_signature_gpg(bmap_obj, detached_sig):
+    return verify_bmap_signature_gpgbin(
+        bmap_obj,
+        detached_sig,
+        [
+            "gpg",
+            "--batch",
+            "--no-auto-key-retrieve",
+            "--no-auto-check-trustdb",
+            "--verify",
+            "--output",
+            "-",
+            "--status-fd=2",
+        ],
+    )
+
+
 def verify_bmap_signature(args, bmap_obj, bmap_path):
     """
     Verify GPG signature of the bmap file if it is present. The signature may
@@ -237,7 +312,32 @@ def verify_bmap_signature(args, bmap_obj, bmap_path):
 
         log.info("discovered signature file for bmap '%s'" % detached_sig.name)
 
-    plaintext, sigs = verify_bmap_signature_gpgme(bmap_obj, detached_sig)
+    methods = {
+        "gpgme": verify_bmap_signature_gpgme,
+        "gpg": verify_bmap_signature_gpg,
+        "gpgv": verify_bmap_signature_gpgv,
+    }
+    have_method = set()
+    try:
+        import gpg
+
+        have_method.add("gpgme")
+    except ImportError:
+        pass
+    if shutil.which("gpg") is not None:
+        have_method.add("gpg")
+    if shutil.which("gpgv") is not None:
+        have_method.add("gpgv")
+
+    if not have_method:
+        error_out("Cannot verify GPG signature without GPG")
+
+    for method in ["gpgme", "gpgv", "gpg"]:
+        log.info(f"Trying to verify signature using {method}")
+        if method not in have_method:
+            continue
+        plaintext, sigs = methods[method](bmap_obj, detached_sig)
+        break
     bmap_obj.seek(0)
 
     if not args.no_sig_verify:
