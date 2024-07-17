@@ -39,6 +39,7 @@ import traceback
 import shutil
 import io
 import pathlib
+from typing import NamedTuple
 from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
 VERSION = "3.8.0"
@@ -129,6 +130,60 @@ def open_block_device(path):
     return NamedFile(file_obj, path)
 
 
+class Signature(NamedTuple):
+    valid: bool
+    fpr: str
+    uid: str
+
+
+def verify_bmap_signature_gpgme(bmap_obj, detached_sig):
+    try:
+        import gpg
+    except ImportError:
+        error_out(
+            'cannot verify the signature because the python "gpg" '
+            "module is not installed on your system\nPlease, either "
+            "install the module or use --no-sig-verify"
+        )
+
+    try:
+        bmap_data = bmap_obj.read()
+
+        if detached_sig:
+            det_sig_data = detached_sig.read()
+            detached_sig.close()
+        else:
+            det_sig_data = None
+
+        context = gpg.Context()
+        plaintext, sigs = context.verify(bmap_data, det_sig_data)
+        sigs = sigs.signatures
+    except gpg.errors.GPGMEError as err:
+        error_out(
+            "failure when trying to verify GPG signature: %s\n"
+            "make sure the bmap file has proper GPG format",
+            err[2].lower(),
+        )
+    except gpg.errors.BadSignatures as err:
+        error_out(
+            "discovered a BAD GPG signature: %s\n",
+            detached_sig.name if detached_sig else bmap_obj.name,
+        )
+
+    def fpr2uid(fpr):
+        key = context.get_key(fpr)
+        return "%s <%s>" % (key.uids[0].name, key.uids[0].email)
+
+    return plaintext, [
+        Signature(
+            (sig.summary & gpg.constants.SIGSUM_VALID) != 0,
+            sig.fpr,
+            fpr2uid(sig.fpr),
+        )
+        for sig in sigs
+    ]
+
+
 def verify_bmap_signature(args, bmap_obj, bmap_path):
     """
     Verify GPG signature of the bmap file if it is present. The signature may
@@ -182,57 +237,24 @@ def verify_bmap_signature(args, bmap_obj, bmap_path):
 
         log.info("discovered signature file for bmap '%s'" % detached_sig.name)
 
-    try:
-        import gpg
-    except ImportError:
-        error_out(
-            'cannot verify the signature because the python "gpg" '
-            "module is not installed on your system\nPlease, either "
-            "install the module or use --no-sig-verify"
-        )
-
-    try:
-        bmap_data = bmap_obj.read()
-        bmap_obj.seek(0)
-
-        if detached_sig:
-            det_sig_data = detached_sig.read()
-            detached_sig.close()
-        else:
-            det_sig_data = None
-
-        context = gpg.Context()
-        plaintext, sigs = context.verify(bmap_data, det_sig_data)
-        sigs = sigs.signatures
-    except gpg.errors.GPGMEError as err:
-        error_out(
-            "failure when trying to verify GPG signature: %s\n"
-            "make sure the bmap file has proper GPG format",
-            err[2].lower(),
-        )
-    except gpg.errors.BadSignatures as err:
-        error_out(
-            "discovered a BAD GPG signature: %s\n",
-            detached_sig.name if detached_sig else bmap_obj.name
-        )
+    plaintext, sigs = verify_bmap_signature_gpgme(bmap_obj, detached_sig)
+    bmap_obj.seek(0)
 
     if not args.no_sig_verify:
         if len(sigs) == 0:
             log.warning(
                 'the "%s" signature file does not actually contain '
-                "any valid signatures" % detached_sig.name if detached_sig
-                else
-                "the bmap file clearsign signature does not actually "
+                "any valid signatures" % detached_sig.name
+                if detached_sig
+                else "the bmap file clearsign signature does not actually "
                 "contain any valid signatures"
             )
         else:
             for sig in sigs:
-                if (sig.summary & gpg.constants.SIGSUM_VALID) != 0:
-                    key = context.get_key(sig.fpr)
-                    author = "%s <%s>" % (key.uids[0].name, key.uids[0].email)
+                if sig.valid:
                     log.info(
                         "successfully verified bmap file signature of %s "
-                        "(fingerprint %s)" % (author, sig.fpr)
+                        "(fingerprint %s)" % (sig.uid, sig.fpr)
                     )
                 else:
                     error_out(
