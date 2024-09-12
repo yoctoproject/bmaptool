@@ -607,7 +607,7 @@ class TransRead(object):
             except netrc.NetrcParseError as e:
                 _log.error(f"Error parsing line {e.lineno} of {e.filename}: {e.msg}")
 
-        if username and password:
+        if username and password and parsed_url.scheme in ("http", "https"):
             # Unfortunately, in order to handle URLs which contain username
             # and password (e.g., http://user:password@my.site.org), we need to
             # do few extra things.
