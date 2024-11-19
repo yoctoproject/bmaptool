@@ -204,7 +204,8 @@ def verify_detached_bmap_signature(args, bmap_obj, bmap_path):
         error_out(
             'cannot verify the signature because the python "gpg" '
             "module is not installed on your system\nPlease, either "
-            "install the module or use --no-sig-verify"
+            "install system GPG python bindings (e.g. python3-gpg) or use "
+            "--no-sig-verify"
         )
 
     try:
@@ -254,7 +255,7 @@ def verify_clearsign_bmap_signature(args, bmap_obj):
             'cannot verify the signature because the python "gpg"'
             "module is not installed on your system\nCannot extract "
             "block map from the bmap file which has clearsign format, "
-            "please, install the module"
+            "please install system GPG python bindings (e.g. python3-gpg)"
         )
 
     try:

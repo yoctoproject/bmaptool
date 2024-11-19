@@ -3,7 +3,10 @@ name = "bmaptool"
 description = "BMAP tools"
 dynamic = ["version"]
 dependencies = [
-    "gpg >= 1.10.0",
+    # NOTE: gpg is not installed because it must come from the system GPG package
+    # (e.g. python3-gpg on Ubuntu) and not from PyPi. The PyPi version is very old
+    # and no longer functions correctly
+    #"gpg >= 1.10.0",
 ]
 required-python = ">= 3.8"
 authors = [
