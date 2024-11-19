@@ -316,9 +316,11 @@ More details can be found [in the OpenZFS documentation](https://openzfs.github.
 changes to the project, first create a new virtual environment and activate it:
 
 ```bash
-python3 -m venv .venv
+python3 -m venv .venv --system-site-packages
 . .venv/bin/activate
 ```
+Note: --system-site-packages is required to give the virtual environment
+access to the system GPG python bindings
 
 Next install the project in editable mode with development dependencies:
 
