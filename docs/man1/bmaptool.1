@@ -77,8 +77,12 @@ be a regular file or a block device (only local).
 
 .PP
 Unless the bmap file is explicitly specified with the "--bmap" option, \fIbmaptool\fR
-automatically discovers it by looking for a file with the same basename as IMAGE
-but with the ".bmap" extension. The bmap file is only looked for in
+automatically discovers it by looking for a file with the same name as IMAGE
+but with the ".bmap" extension. If it was unable to find it that way, it will
+try filenames with each extension of IMAGE removed and ".bmap" added to it. So
+if your IMAGE is named \fIdisk.img.gz\fR, it will first try
+\fIdisk.img.gz.bmap\fR, then \fIdisk.img.bmap\fR and finally \fIdisk.bmap\fR.
+The bmap file is only looked for in
 IMAGE's directory (or base URL, in case IMAGE was specified as an URL). If the
 bmap file is not found, \fIbmaptool\fR fails. To copy without bmap, use
 the "--nobmap" option.
@@ -149,7 +153,9 @@ signature).
 .PP
 The detached signature can be specified with the "--bmap-sig" option, otherwise
 \fIbmaptool\fR tries to automatically discover it by looking for a file with
-the same basename as the bmap file but with the ".asc" or ".sig" extension.
+the same name as the bmap file but with the ".asc" or ".sig" extension.
+If it was unable to find it that way, it will try filenames with each extension
+of IMAGE removed and ".asc" or ".sig" added to it.
 This is very similar to the bmap file auto-discovery. So if a ".asc" or ".sig"
 file exists, \fIbmaptool\fR will verify the signature.
 
