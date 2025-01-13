@@ -349,6 +349,14 @@ is currently maintained by:
 Project git repository is here:
 https://github.com/yoctoproject/bmaptool
 
+
+## Alternatives
+
+There are alternative implementations of `bmaptool` in other programming languages:
+
+* [Rust version](https://github.com/collabora/bmap-rs)
+* [C++ version](https://github.com/embetrix/bmap-writer)
+
 ## Artem's Credits
 
 * Ed Bartosh (eduard.bartosh@intel.com) for helping me with learning python
