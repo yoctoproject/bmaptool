@@ -16,26 +16,40 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
+          # Testing with native host python is required in order to test the
+          # GPG code, since it must use the host python3-gpg package
+          - "native"
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python ${{ matrix.python-version }}
+
+      - if: matrix.python-version != 'native'
+        name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+
+      - if: matrix.python-version == 'native'
+        name: Setup Native Python
+        run: |
+          sudo apt-get install -y python3 python3-pip libgpgme11-dev python3-gpg
+
       - name: Install dependencies
         run: |
-          sudo apt-get install -y pbzip2 pigz lzop liblz4-tool libgpgme11-dev
-          python -m pip install --upgrade pip
-          pip install build
+          sudo apt-get install -y pbzip2 pigz lzop liblz4-tool
+          python3 -m pip install --upgrade pip
+          python3 -m pip install build
+
       - name: Build package
         run: |
-          python -m build
+          python3 -m build
+
       - name: Install package
         run: |
-          pip install -e .[dev]
+          python3 -m pip install -e .[dev]
+
       - name: Run tests
         run: |
-          python -m unittest -vb
+          python3 -m unittest -vb
 
   lint:
     runs-on: ubuntu-latest

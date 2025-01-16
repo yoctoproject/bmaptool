@@ -39,6 +39,9 @@ import traceback
 import shutil
 import io
 import pathlib
+import subprocess
+import re
+from typing import NamedTuple
 from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
 VERSION = "3.8.0"
@@ -129,75 +132,13 @@ def open_block_device(path):
     return NamedFile(file_obj, path)
 
 
-def report_verification_results(context, sigs):
-    """
-    This is a helper function which reports the GPG signature verification
-    results. The 'context' argument is the gpg context object, and the 'sigs'
-    argument contains the results of the 'gpg.verify()' function.
-    """
-
-    import gpg
-
-    for sig in sigs:
-        if (sig.summary & gpg.constants.SIGSUM_VALID) != 0:
-            key = context.get_key(sig.fpr)
-            author = "%s <%s>" % (key.uids[0].name, key.uids[0].email)
-            log.info(
-                "successfully verified bmap file signature of %s "
-                "(fingerprint %s)" % (author, sig.fpr)
-            )
-        else:
-            error_out(
-                "signature verification failed (fingerprint %s): %s\n"
-                "Either fix the problem or use --no-sig-verify to "
-                "disable signature verification",
-                sig.fpr,
-                sig.status[2].lower(),
-            )
+class Signature(NamedTuple):
+    valid: bool
+    fpr: str
+    uid: str
 
 
-def verify_detached_bmap_signature(args, bmap_obj, bmap_path):
-    """
-    This is a helper function for 'verify_bmap_signature()' which handles the
-    detached signature case.
-    """
-
-    if args.no_sig_verify:
-        return None
-
-    if args.bmap_sig:
-        try:
-            sig_obj = TransRead.TransRead(args.bmap_sig)
-        except TransRead.Error as err:
-            error_out("cannot open bmap signature file '%s':\n%s", args.bmap_sig, err)
-        sig_path = args.bmap_sig
-    else:
-        # Check if there is a stand-alone signature file
-        try:
-            sig_path = bmap_path + ".asc"
-            sig_obj = TransRead.TransRead(sig_path)
-        except TransRead.Error:
-            try:
-                sig_path = bmap_path + ".sig"
-                sig_obj = TransRead.TransRead(sig_path)
-            except TransRead.Error:
-                # No signatures found
-                return None
-
-        log.info("discovered signature file for bmap '%s'" % sig_path)
-
-    # If the stand-alone signature file is not local, make a local copy
-    if sig_obj.is_url:
-        try:
-            tmp_obj = tempfile.NamedTemporaryFile("wb+")
-        except IOError as err:
-            error_out("cannot create a temporary file for the signature:\n%s", err)
-
-        shutil.copyfileobj(sig_obj, tmp_obj)
-        tmp_obj.seek(0)
-        sig_obj.close()
-        sig_obj = tmp_obj
-
+def verify_bmap_signature_gpgme(bmap_obj, detached_sig):
     try:
         import gpg
     except ImportError:
@@ -208,60 +149,17 @@ def verify_detached_bmap_signature(args, bmap_obj, bmap_path):
         )
 
     try:
+        bmap_data = bmap_obj.read()
+
+        if detached_sig:
+            det_sig_data = detached_sig.read()
+            detached_sig.close()
+        else:
+            det_sig_data = None
+
         context = gpg.Context()
-        signature = io.FileIO(sig_obj.name)
-        signed_data = io.FileIO(bmap_obj.name)
-        sigs = context.verify(signed_data, signature, None)[1].signatures
-    except gpg.errors.GPGMEError as err:
-        error_out(
-            "failure when trying to verify GPG signature: %s\n"
-            'Make sure file "%s" has proper GPG format',
-            err.getstring(),
-            sig_path,
-        )
-    except gpg.errors.BadSignatures as err:
-        error_out("discovered a BAD GPG signature: %s\n", sig_path)
-
-    sig_obj.close()
-
-    if len(sigs) == 0:
-        log.warning(
-            'the "%s" signature file does not actually contain '
-            "any valid signatures" % sig_path
-        )
-    else:
-        report_verification_results(context, sigs)
-
-    return None
-
-
-def verify_clearsign_bmap_signature(args, bmap_obj):
-    """
-    This is a helper function for 'verify_bmap_signature()' which handles the
-    clearsign signature case.
-    """
-
-    if args.bmap_sig:
-        error_out(
-            "the bmap file has clearsign format and already contains "
-            "the signature, so --bmap-sig option should not be used"
-        )
-
-    try:
-        import gpg
-    except ImportError:
-        error_out(
-            'cannot verify the signature because the python "gpg"'
-            "module is not installed on your system\nCannot extract "
-            "block map from the bmap file which has clearsign format, "
-            "please, install the module"
-        )
-
-    try:
-        context = gpg.Context()
-        signature = io.FileIO(bmap_obj.name)
-        plaintext = io.BytesIO()
-        sigs = context.verify(plaintext, signature, None)
+        plaintext, sigs = context.verify(bmap_data, det_sig_data)
+        sigs = sigs.signatures
     except gpg.errors.GPGMEError as err:
         error_out(
             "failure when trying to verify GPG signature: %s\n"
@@ -269,25 +167,96 @@ def verify_clearsign_bmap_signature(args, bmap_obj):
             err[2].lower(),
         )
     except gpg.errors.BadSignatures as err:
-        error_out("discovered a BAD GPG signature: %s\n", sig_path)
+        error_out(
+            "discovered a BAD GPG signature: %s\n",
+            detached_sig.name if detached_sig else bmap_obj.name,
+        )
 
-    if not args.no_sig_verify:
-        if len(sigs) == 0:
-            log.warning(
-                "the bmap file clearsign signature does not actually "
-                "contain any valid signatures"
+    def fpr2uid(fpr):
+        key = context.get_key(fpr)
+        return "%s <%s>" % (key.uids[0].name, key.uids[0].email)
+
+    return plaintext, [
+        Signature(
+            (sig.summary & gpg.constants.SIGSUM_VALID) != 0,
+            sig.fpr,
+            fpr2uid(sig.fpr),
+        )
+        for sig in sigs
+    ]
+
+
+def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv):
+    with tempfile.TemporaryDirectory(suffix=".bmaptool.gnupg") as td:
+        if detached_sig:
+            with open(f"{td}/sig", "wb") as f:
+                shutil.copyfileobj(detached_sig, f)
+            gpgargv.append(f"{td}/sig")
+        with open(f"{td}/bmap", "wb") as f:
+            shutil.copyfileobj(bmap_obj, f)
+        gpgargv.append(f"{td}/bmap")
+        sp = subprocess.Popen(
+            gpgargv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        (output, error) = sp.communicate()
+        if sp.returncode > 0:
+            if error.find(b"[GNUPG:] NO_PUBKEY "):
+                error_out("No matching key found")
+            error_out("Failed to validate PGP signature")
+
+        # regexes are from patatt and b4
+        short_fpr = None
+        uid = None
+        gs_matches = re.search(
+            rb"^\[GNUPG:] GOODSIG ([0-9A-F]+)\s+(.*)$", error, flags=re.M
+        )
+        if gs_matches:
+            good = True
+            short_fpr, uid = gs_matches.groups()
+        vs_matches = re.search(
+            rb"^\[GNUPG:] VALIDSIG ([0-9A-F]+) (\d{4}-\d{2}-\d{2}) (\d+)",
+            error,
+            flags=re.M,
+        )
+        if vs_matches:
+            valid = True
+            fpr, signdate, signepoch = vs_matches.groups()
+        if not fpr.endswith(short_fpr):
+            error_out("good fingerprint does not match valid fingerprint")
+        if (b': Good signature from "' + uid + b'"') not in error:
+            log.warning("Unable to find good signature in gpg stderr output")
+        return output, [
+            Signature(
+                good and valid,
+                fpr.decode(),
+                uid.decode(),
             )
-        else:
-            report_verification_results(context, sigs)
+        ]
 
-    try:
-        tmp_obj = tempfile.TemporaryFile("w+")
-    except IOError as err:
-        error_out("cannot create a temporary file for bmap:\n%s", err)
 
-    tmp_obj.write(plaintext.getvalue())
-    tmp_obj.seek(0)
-    return tmp_obj
+def verify_bmap_signature_gpgv(bmap_obj, detached_sig):
+    return verify_bmap_signature_gpgbin(
+        bmap_obj, detached_sig, ["gpgv", "--status-fd=2"]
+    )
+
+
+def verify_bmap_signature_gpg(bmap_obj, detached_sig):
+    return verify_bmap_signature_gpgbin(
+        bmap_obj,
+        detached_sig,
+        [
+            "gpg",
+            "--batch",
+            "--no-auto-key-retrieve",
+            "--no-auto-check-trustdb",
+            "--verify",
+            "--output",
+            "-",
+            "--status-fd=2",
+        ],
+    )
 
 
 def verify_bmap_signature(args, bmap_obj, bmap_path):
@@ -316,14 +285,97 @@ def verify_bmap_signature(args, bmap_obj, bmap_path):
     if not bmap_obj:
         return None
 
-    clearsign_marker = "-----BEGIN PGP SIGNED MESSAGE-----"
+    clearsign_marker = b"-----BEGIN PGP SIGNED MESSAGE-----"
     buf = bmap_obj.read(len(clearsign_marker))
     bmap_obj.seek(0)
 
     if buf == clearsign_marker:
-        return verify_clearsign_bmap_signature(args, bmap_obj)
+        log.info("discovered inline signature")
+        detached_sig = None
+    elif args.no_sig_verify:
+        return None
+    elif args.bmap_sig:
+        try:
+            detached_sig = TransRead.TransRead(args.bmap_sig)
+        except TransRead.Error as err:
+            error_out("cannot open bmap signature file '%s':\n%s", args.bmap_sig, err)
     else:
-        return verify_detached_bmap_signature(args, bmap_obj, bmap_path)
+        # Check if there is a stand-alone signature file
+        try:
+            detached_sig = TransRead.TransRead(bmap_path + ".asc")
+        except TransRead.Error:
+            try:
+                detached_sig = TransRead.TransRead(bmap_path + ".sig")
+            except TransRead.Error:
+                # No detached signatures found
+                return None
+
+        log.info("discovered signature file for bmap '%s'" % detached_sig.name)
+
+    methods = {
+        "gpgme": verify_bmap_signature_gpgme,
+        "gpg": verify_bmap_signature_gpg,
+        "gpgv": verify_bmap_signature_gpgv,
+    }
+    have_method = set()
+    try:
+        import gpg
+
+        have_method.add("gpgme")
+    except ImportError:
+        pass
+    if shutil.which("gpg") is not None:
+        have_method.add("gpg")
+    if shutil.which("gpgv") is not None:
+        have_method.add("gpgv")
+
+    if not have_method:
+        error_out("Cannot verify GPG signature without GPG")
+
+    for method in ["gpgme", "gpgv", "gpg"]:
+        log.info(f"Trying to verify signature using {method}")
+        if method not in have_method:
+            continue
+        plaintext, sigs = methods[method](bmap_obj, detached_sig)
+        break
+    bmap_obj.seek(0)
+
+    if not args.no_sig_verify:
+        if len(sigs) == 0:
+            log.warning(
+                'the "%s" signature file does not actually contain '
+                "any valid signatures" % detached_sig.name
+                if detached_sig
+                else "the bmap file clearsign signature does not actually "
+                "contain any valid signatures"
+            )
+        else:
+            for sig in sigs:
+                if sig.valid:
+                    log.info(
+                        "successfully verified bmap file signature of %s "
+                        "(fingerprint %s)" % (sig.uid, sig.fpr)
+                    )
+                else:
+                    error_out(
+                        "signature verification failed (fingerprint %s)\n"
+                        "Either fix the problem or use --no-sig-verify to "
+                        "disable signature verification",
+                        sig.fpr,
+                    )
+
+    if detached_sig:
+        # for detached signatures we are done
+        return None
+
+    try:
+        tmp_obj = tempfile.TemporaryFile("w+b")
+    except IOError as err:
+        error_out("cannot create a temporary file for bmap:\n%s", err)
+
+    tmp_obj.write(plaintext)
+    tmp_obj.seek(0)
+    return tmp_obj
 
 
 def find_and_open_bmap(args):
