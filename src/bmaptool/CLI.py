@@ -41,6 +41,7 @@ import io
 import pathlib
 import subprocess
 import re
+import urllib.parse
 from typing import NamedTuple
 from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
@@ -259,7 +260,7 @@ def verify_bmap_signature_gpg(bmap_obj, detached_sig):
     )
 
 
-def verify_bmap_signature(args, bmap_obj, bmap_path):
+def verify_bmap_signature(args, bmap_obj, bmap_path, is_url):
     """
     Verify GPG signature of the bmap file if it is present. The signature may
     be in a separate file (detached) or it may be inside the bmap file itself
@@ -301,11 +302,19 @@ def verify_bmap_signature(args, bmap_obj, bmap_path):
             error_out("cannot open bmap signature file '%s':\n%s", args.bmap_sig, err)
     else:
         # Check if there is a stand-alone signature file
+        def _add_ext(p, ext):
+            if not is_url:
+                return p + ext
+            # if the image is a url, add the extension to the 'path' part
+            # before the query string and url fragment
+            o = urllib.parse.urlparse(p)
+            return o._replace(path=o.path + ext).geturl()
+
         try:
-            detached_sig = TransRead.TransRead(bmap_path + ".asc")
+            detached_sig = TransRead.TransRead(_add_ext(bmap_path, ".asc"))
         except TransRead.Error:
             try:
-                detached_sig = TransRead.TransRead(bmap_path + ".sig")
+                detached_sig = TransRead.TransRead(_add_ext(bmap_path, ".sig"))
             except TransRead.Error:
                 # No detached signatures found
                 return None
@@ -378,7 +387,7 @@ def verify_bmap_signature(args, bmap_obj, bmap_path):
     return tmp_obj
 
 
-def find_and_open_bmap(args):
+def find_and_open_bmap(args, is_url):
     """
     This is a helper function for 'open_files()' which discovers and opens the
     bmap file, then returns the corresponding file object and the bmap file
@@ -410,7 +419,13 @@ def find_and_open_bmap(args):
         # Automatically discover the bmap file
         image_path = args.image
         while True:
-            bmap_path = image_path + ".bmap"
+            if is_url:
+                # if the image is a url, add the extention to the 'path' part
+                # before the query string and url fragment
+                o = urllib.parse.urlparse(image_path)
+                bmap_path = o._replace(path=o.path + ".bmap").geturl()
+            else:
+                bmap_path = image_path + ".bmap"
             try:
                 bmap_obj = TransRead.TransRead(bmap_path)
                 log.info("discovered bmap file '%s'" % bmap_path)
@@ -418,7 +433,13 @@ def find_and_open_bmap(args):
             except TransRead.Error:
                 pass
 
-            image_path, ext = os.path.splitext(image_path)
+            if is_url:
+                # if the image is a url, split the extension from the 'path'
+                o = urllib.parse.urlparse(image_path)
+                p, ext = os.path.splitext(o.path)
+                image_path = o._replace(path=p).geturl()
+            else:
+                image_path, ext = os.path.splitext(image_path)
             if ext == "":
                 return (None, None)
 
@@ -460,7 +481,7 @@ def open_files(args):
 
     # Open the bmap file. Try to discover the bmap file automatically if it
     # was not specified.
-    (bmap_obj, bmap_path) = find_and_open_bmap(args)
+    (bmap_obj, bmap_path) = find_and_open_bmap(args, image_obj.is_url)
 
     if bmap_path == args.image:
         # Most probably the user specified the bmap file instead of the image
@@ -563,7 +584,7 @@ def copy_command(args):
             "the bmap signature file was specified, but bmap file was " "not found"
         )
 
-    f_obj = verify_bmap_signature(args, bmap_obj, bmap_path)
+    f_obj = verify_bmap_signature(args, bmap_obj, bmap_path, image_obj.is_url)
     if f_obj:
         bmap_obj.close()
         bmap_obj = f_obj
@@ -613,9 +634,17 @@ def copy_command(args):
                 writer.mapped_percent,
             )
         )
+
+        def _get_basename(p):
+            if image_obj.is_url:
+                # if this is a url, strip off potential query string and
+                # fragment from the end
+                p = urllib.parse.urlparse(p).path
+            return os.path.basename(p)
+
         log.info(
             "copying image '%s' to %s using bmap file '%s'"
-            % (os.path.basename(args.image), dest_str, os.path.basename(bmap_path))
+            % (_get_basename(args.image), dest_str, _get_basename(bmap_path))
         )
 
     if args.psplash_pipe:
