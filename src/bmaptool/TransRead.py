@@ -583,6 +583,10 @@ class TransRead(object):
 
         parsed_url = urllib.parse.urlparse(url)
 
+        # figuring out the decompression program to use relies on the
+        # extension, so strip off any potential query parts
+        self.name = parsed_url.path
+
         if parsed_url.scheme == "ssh":
             # Unfortunately, urllib2 does not handle "ssh://" URLs
             self._open_url_ssh(parsed_url)
