@@ -238,7 +238,7 @@ def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv):
 
 def verify_bmap_signature_gpgv(bmap_obj, detached_sig):
     return verify_bmap_signature_gpgbin(
-        bmap_obj, detached_sig, ["gpgv", "--status-fd=2"]
+        bmap_obj, detached_sig, ["gpgv", "--output=-", "--status-fd=2"]
     )
 
 
