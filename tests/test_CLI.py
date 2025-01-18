@@ -22,6 +22,20 @@ import sys
 import tempfile
 import tests.helpers
 import shutil
+from dataclasses import dataclass
+
+
+@dataclass
+class Key:
+    gnupghome: str
+    uid: str
+    fpr: str = None
+
+
+testkeys = {
+    "correct": Key("tests/test-data/gnupg", "correct <foo@bar.org>"),
+    "unknown": Key("tests/test-data/gnupg2", "unknown <blub@bla.net>"),
+}
 
 
 class TestCLI(unittest.TestCase):
@@ -33,13 +47,63 @@ class TestCLI(unittest.TestCase):
                 "--bmap",
                 "tests/test-data/test.image.bmap.v2.0",
                 "--bmap-sig",
-                "tests/test-data/signatures/test.image.bmap.v2.0correct.asc",
+                "tests/test-data/signatures/test.image.bmap.v2.0correct.det.asc",
                 "tests/test-data/test.image.gz",
                 self.tmpfile,
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
+        )
+        self.assertEqual(completed_process.returncode, 0)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"successfully verified bmap file signature", completed_process.stderr
+        )
+
+    def test_valid_signature_fingerprint(self):
+        assert testkeys["correct"].fpr is not None
+        completed_process = subprocess.run(
+            [
+                "bmaptool",
+                "copy",
+                "--bmap",
+                "tests/test-data/signatures/test.image.bmap.v2.0correct.asc",
+                "--fingerprint",
+                testkeys["correct"].fpr,
+                "tests/test-data/test.image.gz",
+                self.tmpfile,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(completed_process.returncode, 0)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"successfully verified bmap file signature", completed_process.stderr
+        )
+
+    def test_valid_signature_fingerprint_keyring(self):
+        assert testkeys["correct"].fpr is not None
+        completed_process = subprocess.run(
+            [
+                "bmaptool",
+                "copy",
+                "--bmap",
+                "tests/test-data/signatures/test.image.bmap.v2.0correct.asc",
+                "--fingerprint",
+                testkeys["correct"].fpr,
+                "--keyring",
+                testkeys["correct"].gnupghome + ".keyring",
+                "tests/test-data/test.image.gz",
+                self.tmpfile,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            # should work without GNUPGHOME set because we supply --keyring
+            env={k: v for k, v in os.environ.items() if k != "GNUPGHOME"},
         )
         self.assertEqual(completed_process.returncode, 0)
         self.assertEqual(completed_process.stdout, b"")
@@ -55,7 +119,7 @@ class TestCLI(unittest.TestCase):
                 "--bmap",
                 "tests/test-data/test.image.bmap.v2.0",
                 "--bmap-sig",
-                "tests/test-data/signatures/test.image.bmap.v2.0imposter.asc",
+                "tests/test-data/signatures/test.image.bmap.v2.0unknown.det.asc",
                 "tests/test-data/test.image.gz",
                 self.tmpfile,
             ],
@@ -75,7 +139,7 @@ class TestCLI(unittest.TestCase):
                 "--bmap",
                 "tests/test-data/test.image.bmap.v1.4",
                 "--bmap-sig",
-                "tests/test-data/signatures/test.image.bmap.v2.0correct.asc",
+                "tests/test-data/signatures/test.image.bmap.v2.0correct.det.asc",
                 "tests/test-data/test.image.gz",
                 self.tmpfile,
             ],
@@ -87,7 +151,7 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(completed_process.stdout, b"")
         self.assertIn(b"discovered a BAD GPG signature", completed_process.stderr)
 
-    def test_wrong_signature_uknown_signer(self):
+    def test_wrong_signature_unknown_signer(self):
         completed_process = subprocess.run(
             [
                 "bmaptool",
@@ -95,7 +159,7 @@ class TestCLI(unittest.TestCase):
                 "--bmap",
                 "tests/test-data/test.image.bmap.v1.4",
                 "--bmap-sig",
-                "tests/test-data/signatures/test.image.bmap.v2.0imposter.asc",
+                "tests/test-data/signatures/test.image.bmap.v2.0unknown.det.asc",
                 "tests/test-data/test.image.gz",
                 self.tmpfile,
             ],
@@ -113,7 +177,7 @@ class TestCLI(unittest.TestCase):
                 "bmaptool",
                 "copy",
                 "--bmap",
-                "tests/test-data/signatures/test.image.bmap.v2.0correct.det.asc",
+                "tests/test-data/signatures/test.image.bmap.v2.0correct.asc",
                 "tests/test-data/test.image.gz",
                 self.tmpfile,
             ],
@@ -127,6 +191,29 @@ class TestCLI(unittest.TestCase):
             b"successfully verified bmap file signature", completed_process.stderr
         )
 
+    def test_fingerprint_without_signature(self):
+        assert testkeys["correct"].fpr is not None
+        completed_process = subprocess.run(
+            [
+                "bmaptool",
+                "copy",
+                "--bmap",
+                "tests/test-data/test.image.bmap.v2.0",
+                "--fingerprint",
+                testkeys["correct"].fpr,
+                "tests/test-data/test.image.gz",
+                self.tmpfile,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(completed_process.returncode, 1)
+        self.assertEqual(completed_process.stdout, b"")
+        self.assertIn(
+            b"no signature found but --fingerprint given", completed_process.stderr
+        )
+
     def setUp(self):
         try:
             import gpg
@@ -134,56 +221,60 @@ class TestCLI(unittest.TestCase):
             self.skipTest("python module 'gpg' missing")
 
         os.makedirs("tests/test-data/signatures", exist_ok=True)
-        for gnupghome, userid in [
-            ("tests/test-data/gnupg/", "correct <foo@bar.org>"),
-            ("tests/test-data/gnupg2/", "imposter <blub@bla.net>"),
-        ]:
-            if os.path.exists(gnupghome):
-                shutil.rmtree(gnupghome)
-            os.makedirs(gnupghome)
-            context = gpg.Context(home_dir=gnupghome, armor=True)
+        for key in testkeys.values():
+            if os.path.exists(key.gnupghome):
+                shutil.rmtree(key.gnupghome)
+            os.makedirs(key.gnupghome)
+            context = gpg.Context(home_dir=key.gnupghome, armor=True)
             dmkey = context.create_key(
-                userid,
+                key.uid,
                 algorithm="rsa3072",
                 expires_in=31536000,
                 sign=True,
                 certify=True,
             )
+            key.fpr = dmkey.fpr
             for bmapv in ["2.0", "1.4"]:
                 testp = "tests/test-data"
                 imbn = "test.image.bmap.v"
-                with open(f"{testp}/{imbn}{bmapv}", "rb") as bmapf, open(
-                    f"{testp}/signatures/{imbn}{bmapv}{userid.split()[0]}.asc",
-                    "wb",
-                ) as sigf, open(
-                    f"{testp}/signatures/{imbn}{bmapv}{userid.split()[0]}.det.asc",
-                    "wb",
-                ) as detsigf:
+                with open(f"{testp}/{imbn}{bmapv}", "rb") as bmapf:
                     bmapcontent = bmapf.read()
-                    signed_data, result = context.sign(
-                        bmapcontent, mode=gpg.constants.sig.mode.DETACH
-                    )
-                    sigf.write(signed_data)
-                    signed_data, result = context.sign(
-                        bmapcontent, mode=gpg.constants.sig.mode.CLEAR
-                    )
-                    detsigf.write(signed_data)
-        os.environ["GNUPGHOME"] = "tests/test-data/gnupg/"
+                    with open(
+                        f"{testp}/signatures/{imbn}{bmapv}{key.uid.split()[0]}.asc",
+                        "wb",
+                    ) as sigf:
+                        signed_data, result = context.sign(
+                            bmapcontent, mode=gpg.constants.sig.mode.CLEAR
+                        )
+                        sigf.write(signed_data)
+                        plaintext, sigs = context.verify(signed_data, None)
+                    with open(
+                        f"{testp}/signatures/{imbn}{bmapv}{key.uid.split()[0]}.det.asc",
+                        "wb",
+                    ) as detsigf:
+                        signed_data, result = context.sign(
+                            bmapcontent, mode=gpg.constants.sig.mode.DETACH
+                        )
+                        detsigf.write(signed_data)
+            # the file supplied to gpgv via --keyring must not be armored
+            context.armor = False
+            with open(f"{key.gnupghome}.keyring", "wb") as f:
+                f.write(context.key_export_minimal())
+
         self.tmpfile = tempfile.mkstemp(prefix="testfile_", dir=".")[1]
+        os.environ["GNUPGHOME"] = testkeys["correct"].gnupghome
 
     def tearDown(self):
         os.unlink(self.tmpfile)
-        for gnupghome, userid in [
-            ("tests/test-data/gnupg/", "correct <foo@bar.org>"),
-            ("tests/test-data/gnupg2/", "imposter <blub@bla.net>"),
-        ]:
-            shutil.rmtree(gnupghome)
+        for key in testkeys.values():
+            shutil.rmtree(key.gnupghome)
+            os.unlink(f"{key.gnupghome}.keyring")
             for bmapv in ["2.0", "1.4"]:
                 testp = "tests/test-data"
                 imbn = "test.image.bmap.v"
-                os.unlink(f"{testp}/signatures/{imbn}{bmapv}{userid.split()[0]}.asc")
+                os.unlink(f"{testp}/signatures/{imbn}{bmapv}{key.uid.split()[0]}.asc")
                 os.unlink(
-                    f"{testp}/signatures/{imbn}{bmapv}{userid.split()[0]}.det.asc"
+                    f"{testp}/signatures/{imbn}{bmapv}{key.uid.split()[0]}.det.asc"
                 )
         os.rmdir("tests/test-data/signatures")
 
