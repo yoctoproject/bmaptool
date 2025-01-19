@@ -64,13 +64,13 @@ class TestBmapHelpers(unittest.TestCase):
         """Check a file system type is returned when used with a symlink"""
 
         with TemporaryDirectory(prefix="testdir_", dir=".") as directory:
-            fobj = tempfile.NamedTemporaryFile(
+            with tempfile.NamedTemporaryFile(
                 "r", prefix="testfile_", delete=False, dir=directory, suffix=".img"
-            )
-            lnk = os.path.join(directory, "test_symlink")
-            os.symlink(fobj.name, lnk)
-            fstype = BmapHelpers.get_file_system_type(lnk)
-            self.assertTrue(fstype)
+            ) as fobj:
+                lnk = os.path.join(directory, "test_symlink")
+                os.symlink(fobj.name, lnk)
+                fstype = BmapHelpers.get_file_system_type(lnk)
+                self.assertTrue(fstype)
 
     def test_is_zfs_configuration_compatible_enabled(self):
         """Check compatibility check is true when zfs param is set correctly"""
