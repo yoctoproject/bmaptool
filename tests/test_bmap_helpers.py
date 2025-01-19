@@ -71,6 +71,7 @@ class TestBmapHelpers(unittest.TestCase):
             os.symlink(fobj.name, lnk)
             fstype = BmapHelpers.get_file_system_type(lnk)
             self.assertTrue(fstype)
+            fobj.close()
 
     def test_is_zfs_configuration_compatible_enabled(self):
         """Check compatibility check is true when zfs param is set correctly"""
