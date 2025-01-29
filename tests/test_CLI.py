@@ -33,8 +33,8 @@ class Key:
 
 
 testkeys = {
-    "correct": Key("tests/test-data/gnupg", "correct <foo@bar.org>"),
-    "unknown": Key("tests/test-data/gnupg2", "unknown <blub@bla.net>"),
+    "correct": Key(None, "correct <foo@bar.org>", None),
+    "unknown": Key(None, "unknown <blub@bla.net>", None),
 }
 
 
@@ -149,9 +149,8 @@ class TestCLI(unittest.TestCase):
 
         os.makedirs("tests/test-data/signatures", exist_ok=True)
         for key in testkeys.values():
-            if os.path.exists(key.gnupghome):
-                shutil.rmtree(key.gnupghome)
-            os.makedirs(key.gnupghome)
+            assert key.gnupghome is None
+            key.gnupghome = tempfile.mkdtemp(prefix="bmaptool")
             context = gpg.Context(home_dir=key.gnupghome)
             dmkey = context.create_key(
                 key.uid,
@@ -194,6 +193,7 @@ class TestCLI(unittest.TestCase):
         for key in testkeys.values():
             shutil.rmtree(key.gnupghome)
             os.unlink(f"{key.gnupghome}.keyring")
+            key.gnupghome = None
             for bmapv in ["2.0", "1.4"]:
                 testp = "tests/test-data"
                 imbn = "test.image.bmap.v"
