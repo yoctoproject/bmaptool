@@ -349,6 +349,17 @@ is currently maintained by:
 Project git repository is here:
 https://github.com/yoctoproject/bmaptool
 
+
+## Alternatives
+
+There are alternative implementations of `bmaptool` in other programming languages:
+
+* [bmap-rs](https://github.com/collabora/bmap-rs) : Rust implementation
+* [bmap-writer](https://github.com/embetrix/bmap-writer) : C++ implementation
+
+> **Note:** Both alternative implementations focus solely on writing images and still require `bmaptool` to generate the bmap file.
+
+
 ## Artem's Credits
 
 * Ed Bartosh (eduard.bartosh@intel.com) for helping me with learning python
