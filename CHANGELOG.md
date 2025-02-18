@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 ### Changed
 
+## [3.9.0]
+
+- copy: add `--removable-device`, `--keyring` and `--fingerprint` options
+- Respect query part of the url when operating on the path
+- support FTP authentication
+- rework GPG tests
+
 ## [3.8.0]
 
 - Move project to yoctoproject
