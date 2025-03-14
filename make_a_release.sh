@@ -30,7 +30,7 @@ fatal() {
 
 usage() {
         cat <<EOF
-Usage: ${0##*/} <new_ver> <outdir>
+Usage: ${0##*/} <new_ver>
 
 <new_ver>  - new bmaptool version to make in X.Y.Z format
 EOF
