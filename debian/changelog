@@ -1,3 +1,12 @@
+bmaptool (3.9.0) unstable; urgency=low
+
+  * copy: add `--removable-device`, `--keyring` and `--fingerprint` options
+  * Respect query part of the url when operating on the path
+  * support FTP authentication
+  * rework GPG tests
+
+ -- Trevor Woerner <twoerner@gmail.com> Fri, 14 Mar 2025 13:46:05 -0600
+
 bmaptool (3.8.0) unstable; urgency=low
 
   * use 'df -P' for POSIX portable output
