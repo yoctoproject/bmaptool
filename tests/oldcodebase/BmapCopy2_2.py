@@ -1,6 +1,6 @@
 # pylint: disable-all
 
-""" This module implements copying of images with bmap and provides the
+"""This module implements copying of images with bmap and provides the
 following API.
   1. BmapCopy class - implements copying to any kind of file, be that a block
      device or a regular file.
@@ -30,7 +30,7 @@ copying only a little bit more than 100MiB of data from the image to the USB
 stick (namely, you copy only mapped blocks). This is a lot faster than copying
 all 4GiB of data. We say that it is a bit more than 100MiB because things like
 file-system meta-data (inode tables, superblocks, etc), partition table, etc
-also contribute to the mapped blocks and are also copied. """
+also contribute to the mapped blocks and are also copied."""
 
 # Disable the following pylint recommendations:
 #   * Too many instance attributes (R0902)
