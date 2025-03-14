@@ -30,7 +30,7 @@ fatal() {
 
 usage() {
         cat <<EOF
-Usage: ${0##*/} <new_ver> <outdir>
+Usage: ${0##*/} <new_ver>
 
 <new_ver>  - new bmaptool version to make in X.Y.Z format
 EOF
@@ -43,10 +43,10 @@ ask_question() {
 	while true; do
 		printf "%s\n" "$question (yes/no)?"
 		IFS= read answer
-		if [ "$answer" == "yes" ]; then
+		if [ "$answer" = "yes" ]; then
 			printf "%s\n" "Very good!"
 			return
-		elif [ "$answer" == "no" ]; then
+		elif [ "$answer" = "no" ]; then
 			printf "%s\n" "Please, do that!"
 			exit 1
 		else
@@ -91,8 +91,8 @@ fi
 ask_question "Did you update the man page"
 ask_question "Did you update tests: test-data and oldcodebase"
 
-# Change the version in the 'bmaptool/CLI.py' file
-sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" bmaptool/CLI.py
+# Change the version in the './src/bmaptool/CLI.py' file
+sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" ./src/bmaptool/CLI.py
 # Sed the version in the RPM spec file
 sed -i -e "s/^Version: [0-9]\+\.[0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmaptool.spec
 # Remove the "rc_num" macro from the RPM spec file to make sure we do not have
