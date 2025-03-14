@@ -43,10 +43,10 @@ ask_question() {
 	while true; do
 		printf "%s\n" "$question (yes/no)?"
 		IFS= read answer
-		if [ "$answer" == "yes" ]; then
+		if [ "$answer" = "yes" ]; then
 			printf "%s\n" "Very good!"
 			return
-		elif [ "$answer" == "no" ]; then
+		elif [ "$answer" = "no" ]; then
 			printf "%s\n" "Please, do that!"
 			exit 1
 		else
@@ -63,7 +63,7 @@ format_changelog() {
 	local width="$((80-$pfx_len))"
 
 	while IFS= read -r line; do
-		printf "%s\n" "$line" | fold -c -s -w "$width" | \
+		printf "%s\n" "$line" | fold -s -w "$width" | \
 			sed -e "1 s/^/$pfx1/" | sed -e "1! s/^/$pfx2/" | \
 			sed -e "s/[\t ]\+$//"
 	done < "$logfile"
@@ -78,12 +78,6 @@ new_ver="$1"; shift
 printf "%s" "$new_ver" | egrep -q -x '[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+' ||
         fatal "please, provide new version in X.Y.Z format"
 
-# Make sure that the current branch is 'main'
-current_branch="$(git branch | sed -n -e '/^*/ s/^* //p')"
-if [ "$current_branch" != "main" ]; then
-	fatal "current branch is '$current_branch' but must be 'main'"
-fi
-
 # Make sure the git index is up-to-date
 [ -z "$(git status --porcelain)" ] || fatal "git index is not up-to-date"
 
@@ -92,7 +86,7 @@ ask_question "Did you update the man page"
 ask_question "Did you update tests: test-data and oldcodebase"
 
 # Change the version in the 'bmaptool/CLI.py' file
-sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" bmaptool/CLI.py
+sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" src/bmaptool/CLI.py
 # Sed the version in the RPM spec file
 sed -i -e "s/^Version: [0-9]\+\.[0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmaptool.spec
 # Remove the "rc_num" macro from the RPM spec file to make sure we do not have
@@ -145,27 +139,11 @@ outdir="."
 tag_name="v$new_ver"
 release_name="bmaptool-$new_ver"
 
-# Create new tag
-printf "%s\n" "Creating tag $tag_name"
-git tag -m "$release_name" "$tag_name"
-
 # Get the name of the release branch corresponding to this version
 release_branch="release-$(printf "%s" "$new_ver" | sed -e 's/\(.*\)\..*/\1.0/')"
 
 cat <<EOF
 To finish the release:
-  1. push the $tag_name tag out
-  2. update the $release_branch with the contents of the 'main' branch
-  3. point the main branch to the updated $release_branch branch
-  4. push the main and $release_branch branches out
-
-The commands would be:
-
-#1
-git push origin $tag_name
-#2
-git branch -f $release_branch main
-#3
-git push origin main:main
-git push origin $release_branch:$release_branch
+  1. Push this change as a PR for review
+  2. Make a release named '$new_ver' in GitHub after the PR merges
 EOF
