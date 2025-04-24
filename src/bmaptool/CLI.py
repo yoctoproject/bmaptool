@@ -541,7 +541,7 @@ def open_files(args):
             # /sys/block/<devicename>/removable attribute. The value in the
             # file is "1" if removable, and "0" if not removable.
             removable_path = os.path.join(
-                "/sys/block", os.path.basename(args.dest), "removable"
+                "/sys/block", os.path.basename(os.path.realpath(args.dest)), "removable"
             )
             try:
                 removable_value = open(removable_path, "r").read(1)
