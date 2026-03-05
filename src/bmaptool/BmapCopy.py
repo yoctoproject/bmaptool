@@ -785,7 +785,12 @@ class BmapCopy(object):
 
         if self._dest_supports_fsync:
             try:
-                os.fsync(self._f_dest.fileno()),
+                self._f_dest.flush()
+            except IOError as err:
+                raise Error("cannot flush '%s': %s" % (self._dest_path, err))
+
+            try:
+                os.fsync(self._f_dest.fileno())
             except OSError as err:
                 raise Error(
                     "cannot synchronize '%s': %s " % (self._dest_path, err.strerror)
