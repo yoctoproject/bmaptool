@@ -221,19 +221,21 @@ class TestChecksumRetry(unittest.TestCase):
             os.unlink(image_path)
             os.unlink(bmap_path)
 
-    def test_checksum_retry_default_and_explicit_values(self):
-        """Test that default retry=1 and explicit retry=1 behave the same."""
+    def test_checksum_retry_disabled_vs_enabled(self):
+        """Test that checksum_retry=None (disabled) vs checksum_retry=1 (enabled) produce identical results."""
         image_size = 8192
         image_path, bmap_path = _create_test_image_with_bmap(image_size)
 
+        dest_path_disabled = None
+        dest_path_enabled = None
+
         try:
-            # Test with default retry (should be 1 or string "1")
+            # Test with checksum_retry=None (disabled - no verification performed)
             f_image = TransRead.TransRead(image_path)
             f_dest = tempfile.NamedTemporaryFile("w+b", delete=False)
-            dest_path = f_dest.name
+            dest_path_disabled = f_dest.name
             f_bmap = open(bmap_path, "r")
 
-            # checksum_retry=None means user didn't specify it, should not retry
             writer = BmapCopy.BmapCopy(
                 f_image, f_dest, f_bmap, image_size, checksum_retry=None
             )
@@ -242,12 +244,15 @@ class TestChecksumRetry(unittest.TestCase):
             f_image.close()
             f_dest.close()
             f_bmap.close()
-            os.unlink(dest_path)
 
-            # Test with explicit retry=1
+            # Verify destination has correct size
+            size_disabled = os.path.getsize(dest_path_disabled)
+            self.assertEqual(size_disabled, image_size)
+
+            # Test with checksum_retry=1 (enabled with 1 retry attempt)
             f_image = TransRead.TransRead(image_path)
             f_dest = tempfile.NamedTemporaryFile("w+b", delete=False)
-            dest_path = f_dest.name
+            dest_path_enabled = f_dest.name
             f_bmap = open(bmap_path, "r")
 
             writer = BmapCopy.BmapCopy(
@@ -258,8 +263,25 @@ class TestChecksumRetry(unittest.TestCase):
             f_image.close()
             f_dest.close()
             f_bmap.close()
-            os.unlink(dest_path)
+
+            # Verify destination has correct size
+            size_enabled = os.path.getsize(dest_path_enabled)
+            self.assertEqual(size_enabled, image_size)
+
+            # Compare contents of both destination files - should be identical
+            with open(dest_path_disabled, "rb") as f:
+                content_disabled = f.read()
+            with open(dest_path_enabled, "rb") as f:
+                content_enabled = f.read()
+
+            self.assertEqual(content_disabled, content_enabled,
+                           "Disabled and enabled checksum_retry modes should produce identical output")
+
         finally:
+            if dest_path_disabled:
+                os.unlink(dest_path_disabled)
+            if dest_path_enabled:
+                os.unlink(dest_path_enabled)
             os.unlink(image_path)
             os.unlink(bmap_path)
 
