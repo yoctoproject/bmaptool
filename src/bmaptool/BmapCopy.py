@@ -873,10 +873,9 @@ class BmapCopy(object):
                 # Verify any remaining range
                 if self._checksum_retry and current_range:
                     range_first, range_last, range_chksum = current_range
-                    if range_chksum and self._cs_type:
-                        self._verify_range_with_retry(
-                            range_first, range_last, range_chksum, range_buffers
-                        )
+                    self._verify_range_with_retry(
+                        range_first, range_last, range_chksum, range_buffers
+                    )
                 break
             elif batch[0] == "error":
                 # The reader thread encountered an error and passed us the
@@ -894,10 +893,9 @@ class BmapCopy(object):
             if self._checksum_retry and current_range and new_range != current_range:
                 # Verify the completed range before moving to the next one
                 prev_first, prev_last, prev_chksum = current_range
-                if prev_chksum and self._cs_type:
-                    self._verify_range_with_retry(
-                        prev_first, prev_last, prev_chksum, range_buffers
-                    )
+                self._verify_range_with_retry(
+                    prev_first, prev_last, prev_chksum, range_buffers
+                )
                 # Reset for new range
                 range_buffers = {}
 
