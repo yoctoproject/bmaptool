@@ -845,7 +845,6 @@ class BmapCopy(object):
         # destination file
         range_buffers = {}  # Track buffers for each range to enable retry
         current_range = None
-        current_range_blocks = set()  # Track which blocks we've written for this range
 
         while True:
             batch = self._batch_queue.get()
@@ -881,7 +880,6 @@ class BmapCopy(object):
                     )
                 # Reset for new range
                 range_buffers = {}
-                current_range_blocks = set()
 
             current_range = new_range
 
@@ -908,7 +906,6 @@ class BmapCopy(object):
             # Track buffers for this range (for retry if needed)
             if self._checksum_retry:
                 range_buffers[(start, end)] = buf
-                current_range_blocks.add((start, end))
 
             self._update_progress(blocks_written)
 
