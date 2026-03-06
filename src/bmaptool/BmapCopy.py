@@ -702,10 +702,26 @@ class BmapCopy(object):
             return True
 
         try:
-            self._f_dest.seek(start * self.block_size)
-            buf = self._f_dest.read((end - start + 1) * self.block_size)
+            # Calculate how many bytes to verify
+            # For the last block range, we may have a partial block
+            byte_start = start * self.block_size
+            byte_end = (end + 1) * self.block_size
 
-            if not buf:
+            # Limit to actual image size for partial last block
+            if self.image_size and byte_end > self.image_size:
+                byte_end = self.image_size
+
+            bytes_to_verify = byte_end - byte_start
+
+            self._f_dest.seek(byte_start)
+            buf = self._f_dest.read(bytes_to_verify)
+
+            # Short read is a mismatch (destination doesn't have all expected data)
+            if len(buf) != bytes_to_verify:
+                _log.warning(
+                    "short read while verifying blocks %d-%d: expected %d bytes, got %d",
+                    start, end, bytes_to_verify, len(buf)
+                )
                 return False
 
             hash_obj = hashlib.new(self._cs_type)
@@ -734,6 +750,10 @@ class BmapCopy(object):
 
         offset = start * self.block_size
         length = (end - start + 1) * self.block_size
+
+        # Limit length to actual image size for partial last block
+        if self.image_size and offset + length > self.image_size:
+            length = self.image_size - offset
 
         try:
             os.posix_fadvise(
