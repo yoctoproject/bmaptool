@@ -24,9 +24,7 @@ blocks if their checksums don't match after being written.
 # pylint: disable=R0914
 
 import os
-import sys
 import tempfile
-import hashlib
 from bmaptool import BmapCreate, BmapCopy, TransRead, BmapHelpers
 
 # This is a work-around for Centos 6
