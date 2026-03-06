@@ -278,6 +278,7 @@ class BmapCopy(object):
 
         # Checksum retry configuration for post-write verification
         self._checksum_retry = checksum_retry
+        self._warned_missing_checksum = False
 
         # Special quirk for /dev/null which does not support fsync()
         if (
@@ -758,6 +759,14 @@ class BmapCopy(object):
             range_chksum   - expected checksum for the range
             range_buffers  - dict of {(start, end): buf} for blocks in this range
         """
+        if self._checksum_retry and not range_chksum and not self._warned_missing_checksum:
+            _log.warning(
+                "checksum-retry requested but bmap file does not contain checksums; "
+                "skipping verification for blocks %d-%d and beyond"
+                % (range_first, range_last)
+            )
+            self._warned_missing_checksum = True
+
         if not range_chksum or not self._checksum_retry:
             return
 
