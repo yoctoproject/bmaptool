@@ -104,7 +104,7 @@ class NamedFile(object):
         return getattr(self._file_obj, name)
 
 
-def open_block_device(path):
+def open_block_device(path, need_read_access=False):
     """
     This is a helper function for 'open_files()' which is called if the
     destination file of the "copy" command is a block device. We handle block
@@ -115,17 +115,25 @@ def open_block_device(path):
     that we are the only users of the block device.
 
     This function opens a block device specified by 'path' in exclusive mode.
+    The 'need_read_access' parameter controls whether the device is opened
+    with read+write (True) or write-only (False) permissions.
     Returns opened file object.
     """
 
     try:
-        descriptor = os.open(path, os.O_WRONLY | os.O_EXCL)
+        if need_read_access:
+            descriptor = os.open(path, os.O_RDWR | os.O_EXCL)
+        else:
+            descriptor = os.open(path, os.O_WRONLY | os.O_EXCL)
     except OSError as err:
         error_out("cannot open block device '%s' in exclusive mode: %s", path, err)
 
     # Turn the block device file descriptor into a file object
     try:
-        file_obj = os.fdopen(descriptor, "wb")
+        if need_read_access:
+            file_obj = os.fdopen(descriptor, "r+b")
+        else:
+            file_obj = os.fdopen(descriptor, "wb")
     except OSError as err:
         os.close(descriptor)
         error_out("cannot open block device '%s':\n%s", path, err)
@@ -586,7 +594,9 @@ def open_files(args):
     try:
         if pathlib.Path(args.dest).is_block_device():
             dest_is_blkdev = True
-            dest_obj = open_block_device(args.dest)
+            # Request read access only if checksum-retry is enabled
+            need_read = bool(args.checksum_retry)
+            dest_obj = open_block_device(args.dest, need_read_access=need_read)
         else:
             dest_obj = open(args.dest, "wb+")
     except IOError as err:
@@ -610,6 +620,22 @@ def copy_command(args):
     if args.no_sig_verify and args.fingerprint:
         error_out("--no-sig-verify and --fingerprint cannot be used together")
 
+    # Validate checksum_retry argument
+    checksum_retry = None
+    if args.checksum_retry is not None:
+        try:
+            checksum_retry = int(args.checksum_retry)
+            if checksum_retry < 1:
+                error_out("--checksum-retry argument must be a positive integer")
+        except ValueError:
+            error_out("--checksum-retry argument must be a valid integer")
+
+        if checksum_retry:
+            log.info(
+                "checksum verification of written blocks enabled with up to %d retry attempts"
+                % checksum_retry
+            )
+
     image_obj, dest_obj, bmap_obj, bmap_path, image_size, dest_is_blkdev = open_files(
         args
     )
@@ -631,10 +657,14 @@ def copy_command(args):
         if dest_is_blkdev:
             dest_str = "block device '%s'" % args.dest
             # For block devices, use the specialized class
-            writer = BmapCopy.BmapBdevCopy(image_obj, dest_obj, bmap_obj, image_size)
+            writer = BmapCopy.BmapBdevCopy(
+                image_obj, dest_obj, bmap_obj, image_size, checksum_retry
+            )
         else:
             dest_str = "file '%s'" % os.path.basename(args.dest)
-            writer = BmapCopy.BmapCopy(image_obj, dest_obj, bmap_obj, image_size)
+            writer = BmapCopy.BmapCopy(
+                image_obj, dest_obj, bmap_obj, image_size, checksum_retry
+            )
     except BmapCopy.Error as err:
         error_out(err)
 
@@ -854,6 +884,19 @@ def parse_arguments():
     # The --no-verify option
     text = "do not verify the data checksum while writing"
     parser_copy.add_argument("--no-verify", action="store_true", help=text)
+
+    # The --checksum-retry option
+    text = (
+        "verify checksums of written blocks and retry writing on mismatch "
+        "(optional: number of retries, default 1)"
+    )
+    parser_copy.add_argument(
+        "--checksum-retry",
+        nargs="?",
+        const="1",
+        type=str,
+        help=text,
+    )
 
     # The --psplash-pipe option
     text = "write progress to a psplash pipe"

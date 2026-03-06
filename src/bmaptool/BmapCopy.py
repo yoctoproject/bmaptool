@@ -213,16 +213,22 @@ class BmapCopy(object):
     instance.
     """
 
-    def __init__(self, image, dest, bmap=None, image_size=None):
+    def __init__(self, image, dest, bmap=None, image_size=None, checksum_retry=None):
         """
         The class constructor. The parameters are:
-            image      - file-like object of the image which should be copied,
-                         should only support 'read()' and 'seek()' methods,
-                         and only seeking forward has to be supported.
-            dest       - file object of the destination file to copy the image
-                         to.
-            bmap       - file object of the bmap file to use for copying.
-            image_size - size of the image in bytes.
+            image           - file-like object of the image which should be copied,
+                              should only support 'read()' and 'seek()' methods,
+                              and only seeking forward has to be supported.
+            dest            - file object of the destination file to copy the image
+                              to.
+            bmap            - file object of the bmap file to use for copying.
+            image_size      - size of the image in bytes.
+            checksum_retry  - number of retries for verifying written bmap ranges.
+                              If set to a value > 0, each written mapped range
+                              described in the bmap will be read back and its checksum
+                              verified against the expected value from the bmap file.
+                              If a mismatch is detected for a range, the entire range
+                              will be rewritten up to checksum_retry times.
         """
 
         self._xml = None
@@ -269,6 +275,10 @@ class BmapCopy(object):
         self._cs_len = None
         self._cs_attrib_name = None
         self._bmap_cs_attrib_name = None
+
+        # Checksum retry configuration for post-write verification
+        self._checksum_retry = checksum_retry
+        self._warned_missing_checksum = False
 
         # Special quirk for /dev/null which does not support fsync()
         if (
@@ -615,10 +625,12 @@ class BmapCopy(object):
     def _get_data(self, verify):
         """
         This is generator  which reads the image file in '_batch_blocks' chunks
-        and yields ('type', 'start', 'end',  'buf) tuples, where:
+        and yields ('type', 'start', 'end', 'buf', 'range_first', 'range_last', 'range_chksum')
+        tuples, where:
           * 'start' is the starting block number of the batch;
           * 'end' is the last block of the batch;
-          * 'buf' a buffer containing the batch data.
+          * 'buf' a buffer containing the batch data;
+          * 'range_first', 'range_last', 'range_chksum' are the bmap range info for post-write verification.
         """
 
         _log.debug("the reader thread has started")
@@ -655,7 +667,7 @@ class BmapCopy(object):
                         % (blocks, self._batch_queue.qsize())
                     )
 
-                    self._batch_queue.put(("range", start, start + blocks - 1, buf))
+                    self._batch_queue.put(("range", start, start + blocks - 1, buf, first, last, chksum))
 
                 if verify and chksum and hash_obj.hexdigest() != chksum:
                     raise Error(
@@ -672,6 +684,153 @@ class BmapCopy(object):
             self._batch_queue.put(("error", sys.exc_info()))
 
         self._batch_queue.put(None)
+
+    def _verify_written_blocks(self, start, end, expected_chksum):
+        """
+        Verify the checksum of blocks that were written to the destination file.
+        Returns True if the checksum matches, False otherwise.
+
+        Args:
+            start           - starting block number
+            end             - ending block number
+            expected_chksum - expected checksum string
+
+        Returns:
+            True if checksum matches, False if mismatch
+        """
+        if not self._cs_type or not expected_chksum:
+            return True
+
+        try:
+            # Calculate how many bytes to verify
+            # For the last block range, we may have a partial block
+            byte_start = start * self.block_size
+            byte_end = (end + 1) * self.block_size
+
+            # Limit to actual image size for partial last block
+            if self.image_size and byte_end > self.image_size:
+                byte_end = self.image_size
+
+            bytes_to_verify = byte_end - byte_start
+
+            self._f_dest.seek(byte_start)
+            buf = self._f_dest.read(bytes_to_verify)
+
+            # Short read is a mismatch (destination doesn't have all expected data)
+            if len(buf) != bytes_to_verify:
+                _log.warning(
+                    "short read while verifying blocks %d-%d: expected %d bytes, got %d",
+                    start, end, bytes_to_verify, len(buf)
+                )
+                return False
+
+            hash_obj = hashlib.new(self._cs_type)
+            hash_obj.update(buf)
+
+            calculated = hash_obj.hexdigest()
+            return calculated == expected_chksum
+        except IOError as err:
+            _log.error(
+                "error while verifying blocks %d-%d of '%s': %s",
+                start, end, self._dest_path, err
+            )
+            return False
+
+    def _drop_cached_blocks(self, start, end):
+        """
+        Best-effort invalidation of destination page cache for block range.
+        This helps make checksum verification read data back from storage
+        rather than returning cached pages.
+        """
+
+        if not hasattr(os, "posix_fadvise") or not hasattr(
+            os, "POSIX_FADV_DONTNEED"
+        ):
+            return
+
+        offset = start * self.block_size
+        length = (end - start + 1) * self.block_size
+
+        # Limit length to actual image size for partial last block
+        if self.image_size and offset + length > self.image_size:
+            length = self.image_size - offset
+
+        try:
+            os.posix_fadvise(
+                self._f_dest.fileno(), offset, length, os.POSIX_FADV_DONTNEED
+            )
+        except OSError as err:
+            _log.debug(
+                "cannot drop page cache for blocks %d-%d of '%s': %s",
+                start,
+                end,
+                self._dest_path,
+                err,
+            )
+
+    def _verify_range_with_retry(self, range_first, range_last, range_chksum, range_buffers):
+        """
+        Verify a block range's checksum after writing. If verification fails,
+        retry writing the range up to self._checksum_retry times.
+
+        Args:
+            range_first    - first block of the range
+            range_last     - last block of the range
+            range_chksum   - expected checksum for the range
+            range_buffers  - dict of {(start, end): buf} for blocks in this range
+        """
+        if self._checksum_retry and not range_chksum and not self._warned_missing_checksum:
+            _log.warning(
+                "checksum-retry requested but bmap file does not contain checksums; "
+                "skipping verification for blocks %d-%d and beyond"
+                % (range_first, range_last)
+            )
+            self._warned_missing_checksum = True
+
+        if not range_chksum or not self._checksum_retry:
+            return
+
+        retry_count = 0
+        retry_limit = int(self._checksum_retry)
+
+        while True:
+            # Sync to disk before reading back for verification
+            # This ensures we verify data that has actually reached the physical
+            # disk, not just what's in the kernel's page cache
+            self.sync()
+            self._drop_cached_blocks(range_first, range_last)
+
+            # Verify the entire range
+            if self._verify_written_blocks(range_first, range_last, range_chksum):
+                _log.debug(
+                    "checksum verification passed for blocks %d-%d"
+                    % (range_first, range_last)
+                )
+                return
+
+            # Checksum mismatch - retry
+            retry_count += 1
+            if retry_count > retry_limit:
+                raise Error(
+                    "checksum verification failed for blocks %d-%d after "
+                    "%d retries" % (range_first, range_last, retry_limit)
+                )
+
+            _log.warning(
+                "checksum mismatch for blocks %d-%d, retrying "
+                "(attempt %d/%d)" % (range_first, range_last, retry_count, retry_limit)
+            )
+
+            # Re-write all blocks in this range
+            for (start, end), buf in range_buffers.items():
+                try:
+                    self._f_dest.seek(start * self.block_size)
+                    self._f_dest.write(buf)
+                except IOError as err:
+                    raise Error(
+                        "error while writing blocks %d-%d of '%s': %s"
+                        % (start, end, self._dest_path, err)
+                    )
 
     def copy(self, sync=True, verify=True):
         """
@@ -704,10 +863,19 @@ class BmapCopy(object):
 
         # Read the image in '_batch_blocks' chunks and write them to the
         # destination file
+        range_buffers = {}  # Track buffers for each range to enable retry
+        current_range = None
+
         while True:
             batch = self._batch_queue.get()
             if batch is None:
                 # No more data, the image is written
+                # Verify any remaining range
+                if self._checksum_retry and current_range:
+                    range_first, range_last, range_chksum = current_range
+                    self._verify_range_with_retry(
+                        range_first, range_last, range_chksum, range_buffers
+                    )
                 break
             elif batch[0] == "error":
                 # The reader thread encountered an error and passed us the
@@ -715,10 +883,23 @@ class BmapCopy(object):
                 exc_info = batch[1]
                 raise exc_info[1]
 
-            (start, end, buf) = batch[1:4]
+            (start, end, buf, range_first, range_last, range_chksum) = batch[1:7]
 
             assert len(buf) <= (end - start + 1) * self.block_size
             assert len(buf) > (end - start) * self.block_size
+
+            # Check if we've moved to a new range - if so, verify the previous one
+            new_range = (range_first, range_last, range_chksum)
+            if self._checksum_retry and current_range and new_range != current_range:
+                # Verify the completed range before moving to the next one
+                prev_first, prev_last, prev_chksum = current_range
+                self._verify_range_with_retry(
+                    prev_first, prev_last, prev_chksum, range_buffers
+                )
+                # Reset for new range
+                range_buffers = {}
+
+            current_range = new_range
 
             self._f_dest.seek(start * self.block_size)
 
@@ -739,6 +920,10 @@ class BmapCopy(object):
             self._batch_queue.task_done()
             blocks_written += end - start + 1
             bytes_written += len(buf)
+
+            # Track buffers for this range (for retry if needed)
+            if self._checksum_retry:
+                range_buffers[(start, end)] = buf
 
             self._update_progress(blocks_written)
 
@@ -785,7 +970,12 @@ class BmapCopy(object):
 
         if self._dest_supports_fsync:
             try:
-                os.fsync(self._f_dest.fileno()),
+                self._f_dest.flush()
+            except IOError as err:
+                raise Error("cannot flush '%s': %s" % (self._dest_path, err))
+
+            try:
+                os.fsync(self._f_dest.fileno())
             except OSError as err:
                 raise Error(
                     "cannot synchronize '%s': %s " % (self._dest_path, err.strerror)
@@ -800,14 +990,14 @@ class BmapBdevCopy(BmapCopy):
     scheduler.
     """
 
-    def __init__(self, image, dest, bmap=None, image_size=None):
+    def __init__(self, image, dest, bmap=None, image_size=None, checksum_retry=None):
         """
         The same as the constructor of the 'BmapCopy' base class, but adds
         useful guard-checks specific to block devices.
         """
 
         # Call the base class constructor first
-        BmapCopy.__init__(self, image, dest, bmap, image_size)
+        BmapCopy.__init__(self, image, dest, bmap, image_size, checksum_retry)
 
         self._dest_fsync_watermark = (6 * 1024 * 1024) // self.block_size
 
