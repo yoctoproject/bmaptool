@@ -223,10 +223,11 @@ class BmapCopy(object):
                               to.
             bmap            - file object of the bmap file to use for copying.
             image_size      - size of the image in bytes.
-            checksum_retry  - number of retries for verifying written blocks.
-                              If set to a value > 0, each written block will be read
-                              back and its checksum verified against the expected value
-                              from the bmap file. If a mismatch is detected, the block
+            checksum_retry  - number of retries for verifying written bmap ranges.
+                              If set to a value > 0, each written mapped range
+                              described in the bmap will be read back and its checksum
+                              verified against the expected value from the bmap file.
+                              If a mismatch is detected for a range, the entire range
                               will be rewritten up to checksum_retry times.
         """
 
