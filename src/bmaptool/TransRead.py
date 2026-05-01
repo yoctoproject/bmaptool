@@ -222,9 +222,13 @@ class TransRead(object):
 
         if getattr(self, "_child_processes"):
             for child in self._child_processes:
-                if child.poll() is None:
+                returncode = child.poll()
+                if returncode is None:
+                    # process is still running
                     child.kill()
-                    child.wait()
+                    returncode = child.wait()
+                if returncode != 0:
+                    raise Error(f"non-zero exit of {child.args}: {returncode}")
             self._child_processes = []
 
     def _read_thread(self, f_from, f_to):
