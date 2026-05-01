@@ -403,8 +403,11 @@ class BmapCopy(object):
             self._f_bmap.seek(0)
             xml_extract = ""
             for num, line in enumerate(self._f_bmap):
-                if num >= err.position[0] - 4 and num <= err.position[0] + 4:
-                    xml_extract += "Line %d: %s" % (num, line)
+                if num < err.position[0] - 4:
+                    continue
+                if num > err.position[0] + 4:
+                    break
+                xml_extract += "Line %d: %s" % (num, line)
 
             raise Error(
                 "cannot parse the bmap file '%s' which should be a "
