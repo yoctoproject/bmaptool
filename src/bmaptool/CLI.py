@@ -100,6 +100,9 @@ class NamedFile(object):
         self._file_obj = file_obj
         self.name = name
 
+    def __iter__(self):
+        return iter(self._file_obj)
+
     def __getattr__(self, name):
         return getattr(self._file_obj, name)
 
