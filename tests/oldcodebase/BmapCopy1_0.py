@@ -501,7 +501,7 @@ class BmapCopy:
                 exc_info = batch[1]
                 raise exc_info[1].with_traceback(exc_info[2])
 
-            (start, end, buf) = batch[1:4]
+            start, end, buf = batch[1:4]
 
             assert len(buf) <= (end - start + 1) * self.block_size
             assert len(buf) > (end - start) * self.block_size

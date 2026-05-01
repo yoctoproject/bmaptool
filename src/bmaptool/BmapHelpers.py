@@ -52,8 +52,8 @@ def human_size(size):
 
 def human_time(seconds):
     """Transform time in seconds to the HH:MM:SS format."""
-    (minutes, seconds) = divmod(seconds, 60)
-    (hours, minutes) = divmod(minutes, 60)
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
 
     result = ""
     if hours:

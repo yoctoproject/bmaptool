@@ -218,7 +218,7 @@ def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv, keyring):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        (output, error) = sp.communicate()
+        output, error = sp.communicate()
         if sp.returncode > 0:
             if error.find(b"[GNUPG:] NO_PUBKEY "):
                 error_out("No matching key found")
@@ -542,7 +542,7 @@ def open_files(args):
 
     # Open the bmap file. Try to discover the bmap file automatically if it
     # was not specified.
-    (bmap_obj, bmap_path) = find_and_open_bmap(args, image_obj.is_url)
+    bmap_obj, bmap_path = find_and_open_bmap(args, image_obj.is_url)
 
     if bmap_path == args.image:
         # Most probably the user specified the bmap file instead of the image
