@@ -407,7 +407,7 @@ class BmapCopy(object):
                     continue
                 if num > err.position[0] + 4:
                     break
-                xml_extract += "Line %d: %s" % (num, line)
+                xml_extract += "Line %d: %s" % (num, line.decode(errors="backslashreplace"))
 
             raise Error(
                 "cannot parse the bmap file '%s' which should be a "
