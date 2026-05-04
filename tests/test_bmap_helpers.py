@@ -32,7 +32,6 @@ except ImportError:  # for Python < 3.2
     from backports.tempfile import TemporaryDirectory
 from bmaptool import BmapHelpers
 
-
 # This is a work-around for Centos 6
 try:
     import unittest2 as unittest  # pylint: disable=F0401

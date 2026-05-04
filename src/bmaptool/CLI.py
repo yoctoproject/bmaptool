@@ -100,6 +100,9 @@ class NamedFile(object):
         self._file_obj = file_obj
         self.name = name
 
+    def __iter__(self):
+        return iter(self._file_obj)
+
     def __getattr__(self, name):
         return getattr(self._file_obj, name)
 
@@ -215,7 +218,7 @@ def verify_bmap_signature_gpgbin(bmap_obj, detached_sig, gpgargv, keyring):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        (output, error) = sp.communicate()
+        output, error = sp.communicate()
         if sp.returncode > 0:
             if error.find(b"[GNUPG:] NO_PUBKEY "):
                 error_out("No matching key found")
@@ -362,6 +365,35 @@ def verify_bmap_signature(args, bmap_obj, bmap_path, is_url):
         have_method.add("gpgv")
 
     if not have_method:
+        # if no method is available: that is okay i --no-sig-verify was passed
+        if args.no_sig_verify:
+            # if signature was detached, there is no cleartext to return
+            if detached_sig:
+                return None
+            # Since no gpg is available and no signature verification is
+            # required, strip off the signature from the plaintext manually.
+            # Since mmap is used later, we cannot use io.BytesIO() but need a
+            # real file.
+            try:
+                tmp_obj = tempfile.TemporaryFile("w+b")
+            except IOError as err:
+                error_out("cannot create a temporary file for bmap:\n%s", err)
+
+            header_done = False
+            for line in bmap_obj.readlines():
+                if not header_done:
+                    # header is done after the first empty line
+                    if line == b"\n":
+                        header_done = True
+                    continue
+                if line == b"-----BEGIN PGP SIGNATURE-----\n":
+                    break
+                if line.endswith(b"-----BEGIN PGP SIGNATURE-----\n"):
+                    line.removeprefix(b"- ")
+                tmp_obj.write(line)
+
+            tmp_obj.seek(0)
+            return tmp_obj
         error_out("Cannot verify GPG signature without GPG")
 
     for method in ["gpgme", "gpgv", "gpg"]:
@@ -510,7 +542,7 @@ def open_files(args):
 
     # Open the bmap file. Try to discover the bmap file automatically if it
     # was not specified.
-    (bmap_obj, bmap_path) = find_and_open_bmap(args, image_obj.is_url)
+    bmap_obj, bmap_path = find_and_open_bmap(args, image_obj.is_url)
 
     if bmap_path == args.image:
         # Most probably the user specified the bmap file instead of the image
