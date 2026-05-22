@@ -56,4 +56,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: psf/black@stable
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: python3 -m pip install ruff==0.15.14
+      - name: ruff format --check
+        run: ruff format --check .
