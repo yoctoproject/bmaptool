@@ -1,0 +1,29 @@
+# Dependabot configuration for bmaptool.
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Keep the GitHub Actions used in .github/workflows/ up to date.
+  # All third-party actions are SHA-pinned with a "# vX.Y.Z" comment;
+  # dependabot rewrites both the SHA and the comment when a new tag
+  # ships, so the comment stays accurate.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Keep Python packages used in pyproject.toml up to date. Runtime
+  # dependencies are empty today; this primarily exercises the
+  # [project.optional-dependencies].dev group (ruff).
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns:
+          - "*"
