@@ -17,6 +17,11 @@ authors = [
     {name = "Tim Orling", email = "ticotimo@gmail.com"},
 
 ]
+maintainers = [
+    {name = "Trevor Woerner", email = "twoerner@gmail.com"},
+    {name = "Joshua Watt", email = "JPEWhacker@gmail.com"},
+    {name = "Tim Orling", email = "ticotimo@gmail.com"},
+]
 readme = "README.md"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
