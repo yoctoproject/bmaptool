@@ -48,6 +48,7 @@ dev = [
 Homepage = "https://github.com/yoctoproject/bmaptool"
 Repository = "https://github.com/yoctoproject/bmaptool.git"
 Issues = "https://github.com/yoctoproject/bmaptool/issues"
+Changelog = "https://github.com/yoctoproject/bmaptool/blob/main/CHANGELOG.md"
 
 [project.scripts]
 bmaptool = "bmaptool.CLI:main"
