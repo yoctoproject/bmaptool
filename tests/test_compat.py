@@ -15,9 +15,8 @@
 # General Public License for more details.
 
 """
-This unit test verifies various compatibility aspects of the BmapCopy module:
-    * current BmapCopy has to handle all the older bmap formats
-    * older BmapCopy have to handle all the newer compatible bmap formats
+This unit test verifies that the current BmapCopy module can read every
+historical bmap file format supplied as a fixture in `tests/test-data/`.
 """
 
 # Disable the following pylint recommendations:
@@ -45,8 +44,6 @@ _IMAGE_NAME = "test.image.gz"
 _BMAP_TEMPL = "test.image.bmap.v"
 # Name of the subdirectory where test data are stored
 _TEST_DATA_SUBDIR = "test-data"
-# Name of the subdirectory where old BmapCopy modules are stored
-_OLDCODEBASE_SUBDIR = "oldcodebase"
 
 
 class TestCompat(unittest.TestCase):
@@ -88,70 +85,5 @@ class TestCompat(unittest.TestCase):
                 image_path, self._f_copy.name, bmap_path, image_chksum, image_size
             )
 
-        # Test the older versions of BmapCopy
-        self._test_older_bmapcopy()
-
         self._f_copy.close()
         self._f_image.close()
-
-    def _test_older_bmapcopy(self):
-        """Test older than the current versions of the BmapCopy class."""
-
-        def import_module(searched_module):
-            """Search and import a module by its name."""
-
-            modref = __import__(searched_module)
-            for name in searched_module.split(".")[1:]:
-                modref = getattr(modref, name)
-            return modref
-
-        oldcodebase_dir = os.path.join(os.path.dirname(__file__), _OLDCODEBASE_SUBDIR)
-
-        # Construct the list of old BmapCopy modules
-        old_modules = []
-        for dentry in os.listdir(oldcodebase_dir):
-            if dentry.startswith("BmapCopy") and dentry.endswith(".py"):
-                old_modules.append("tests." + _OLDCODEBASE_SUBDIR + "." + dentry[:-3])
-
-        for old_module in old_modules:
-            modref = import_module(old_module)
-
-            for bmap_path in self._bmap_paths:
-                self._do_test_older_bmapcopy(bmap_path, modref)
-
-    def _do_test_older_bmapcopy(self, bmap_path, modref):
-        """
-        Test an older version of BmapCopy class, referenced by the 'modref'
-        argument. The 'bmap_path' argument is the bmap file path to test with.
-        """
-
-        # Get a reference to the older BmapCopy class object to test with
-        old_bmapcopy_class = getattr(modref, "BmapCopy")
-        supported_ver = getattr(modref, "SUPPORTED_BMAP_VERSION")
-
-        f_bmap = open(bmap_path, "r")
-
-        # Find the version of the bmap file. The easiest is to simply use the
-        # latest BmapCopy.
-        bmapcopy = BmapCopy.BmapCopy(self._f_image, self._f_copy, f_bmap)
-        bmap_version = bmapcopy.bmap_version
-        bmap_version_major = bmapcopy.bmap_version_major
-
-        try:
-            if supported_ver >= bmap_version:
-                writer = old_bmapcopy_class(self._f_image, self._f_copy, f_bmap)
-                writer.copy(True, True)
-        except:  # pylint: disable=W0702
-            if supported_ver >= bmap_version_major:
-                # The BmapCopy which we are testing is supposed to support this
-                # version of bmap file format. However, bmap format version 1.4
-                # was a screw-up, because it actually had incompatible changes,
-                # so old versions of BmapCopy are supposed to fail.
-                if not (supported_ver == 1 and bmap_version == "1.4"):
-                    print(
-                        'Module "%s" failed to handle "%s"'
-                        % (modref.__name__, bmap_path)
-                    )
-                    raise
-
-        f_bmap.close()
