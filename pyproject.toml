@@ -9,6 +9,8 @@ dependencies = [
     #"gpg >= 1.10.0",
 ]
 requires-python = ">= 3.9"
+license = "GPL-2.0-only"
+license-files = ["LICENSE"]
 authors = [
     {name = "Joshua Watt", email = "JPEWhacker@gmail.com"},
     {name = "Trevor Woerner", email = "twoerner@gmail.com"},
