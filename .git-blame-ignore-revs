@@ -1,0 +1,11 @@
+# Revisions listed here are skipped by `git blame` when the file is wired in
+# via:
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Add only commits whose entire diff is mechanical noise (e.g. a tree-wide
+# formatter run). Never list a commit that changes behavior - readers will
+# stop seeing it as a real revision in `git blame` output.
+
+# reformat: apply ruff format to the entire tree
+46c6f8739b92b5e139c998eb84c7419809ff505d
