@@ -615,9 +615,7 @@ def copy_command(args):
     )
 
     if args.bmap_sig and not bmap_obj:
-        error_out(
-            "the bmap signature file was specified, but bmap file was " "not found"
-        )
+        error_out("the bmap signature file was specified, but bmap file was not found")
 
     f_obj = verify_bmap_signature(args, bmap_obj, bmap_path, image_obj.is_url)
     if f_obj:
@@ -653,8 +651,7 @@ def copy_command(args):
             log.info("no bmap given, copy entire image to '%s'" % args.dest)
         else:
             error_out(
-                "bmap file not found, please, use --nobmap option to "
-                "flash without bmap"
+                "bmap file not found, please, use --nobmap option to flash without bmap"
             )
     else:
         log.info("block map format version %s" % writer.bmap_version)
@@ -767,7 +764,7 @@ def create_command(args):
             "all %s are mapped, no holes in '%s'"
             % (creator.image_size_human, args.image)
         )
-        log.warning("was the image handled incorrectly and holes " "were expanded?")
+        log.warning("was the image handled incorrectly and holes were expanded?")
 
 
 def parse_arguments():

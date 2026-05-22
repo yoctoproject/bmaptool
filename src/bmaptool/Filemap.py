@@ -96,7 +96,7 @@ class _FilemapBase(object):
             raise Error("cannot flush image file '%s': %s" % (self._image_path, err))
 
         try:
-            os.fsync(self._f_image.fileno()),
+            (os.fsync(self._f_image.fileno()),)
         except OSError as err:
             raise Error(
                 "cannot synchronize image file '%s': %s "
@@ -192,8 +192,7 @@ def _lseek(file_obj, offset, whence):
             return -1
         elif err.errno == errno.EINVAL:
             raise ErrorNotSupp(
-                "the kernel or file-system does not support "
-                '"SEEK_HOLE" and "SEEK_DATA"'
+                'the kernel or file-system does not support "SEEK_HOLE" and "SEEK_DATA"'
             )
         else:
             raise
@@ -422,7 +421,7 @@ class FilemapFiemap(_FilemapBase):
                 raise ErrorNotSupp(errstr)
             if err.errno == errno.ENOTTY:
                 errstr = (
-                    "FilemapFiemap: the FIEMAP ioctl is not supported " "by the kernel"
+                    "FilemapFiemap: the FIEMAP ioctl is not supported by the kernel"
                 )
                 _log.debug(errstr)
                 raise ErrorNotSupp(errstr)

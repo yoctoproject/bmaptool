@@ -316,7 +316,7 @@ class BmapCopy(object):
             self._psplash_pipe = path
         else:
             _log.warning(
-                "'%s' is not a pipe, so psplash progress will not be " "updated" % path
+                "'%s' is not a pipe, so psplash progress will not be updated" % path
             )
 
     def set_progress_indicator(self, file_obj, format_string):
@@ -785,7 +785,7 @@ class BmapCopy(object):
 
         if self._dest_supports_fsync:
             try:
-                os.fsync(self._f_dest.fileno()),
+                (os.fsync(self._f_dest.fileno()),)
             except OSError as err:
                 raise Error(
                     "cannot synchronize '%s': %s " % (self._dest_path, err.strerror)
@@ -878,9 +878,10 @@ class BmapBdevCopy(BmapCopy):
         #    This was observed e.g. in Fedora 17.
         # The old settings are saved and restored by the context managers.
 
-        with SysfsChange(self._sysfs_max_ratio_path, "1") as max_ratio_chg, SysfsChange(
-            self._sysfs_scheduler_path, "none"
-        ) as scheduler_chg:
+        with (
+            SysfsChange(self._sysfs_max_ratio_path, "1") as max_ratio_chg,
+            SysfsChange(self._sysfs_scheduler_path, "none") as scheduler_chg,
+        ):
             if max_ratio_chg.error:
                 _log.warning(
                     "failed to disable excessive buffering, expect "
