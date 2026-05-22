@@ -83,7 +83,7 @@ printf "%s" "$new_ver" | egrep -q -x '[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+' 
 
 # Remind the maintainer about various important things
 ask_question "Did you update the man page"
-ask_question "Did you update tests: test-data and oldcodebase"
+ask_question "Did you update tests: test-data"
 
 # Change the version in the package
 sed -i -e "s/^__version__ = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/__version__ = \"$new_ver\"/" src/bmaptool/__init__.py
