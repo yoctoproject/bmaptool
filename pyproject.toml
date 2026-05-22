@@ -40,7 +40,7 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-    "black >= 22.3.0",
+    "ruff >= 0.6.0",
 ]
 
 [project.urls]
@@ -58,3 +58,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.version]
 path = "src/bmaptool/__init__.py"
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
