@@ -139,8 +139,7 @@ def _decode_sshpass_exit_code(code):
         result = "invalid/incorrect password"
     elif code == 6:
         result = (
-            "host public key is unknown. sshpass exits without "
-            "confirming the new key"
+            "host public key is unknown. sshpass exits without confirming the new key"
         )
     elif code == 255:
         # SSH result =s 255 on any error

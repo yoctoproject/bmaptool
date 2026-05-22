@@ -126,9 +126,7 @@ class TestBmapHelpers(unittest.TestCase):
             self.assertFalse(BmapHelpers.is_zfs_configuration_compatible())
 
     @patch.object(BmapHelpers, "get_file_system_type", return_value="zfs")
-    def test_is_compatible_file_system_zfs_valid(
-        self, mock_get_fs_type
-    ):  # pylint: disable=unused-argument
+    def test_is_compatible_file_system_zfs_valid(self, mock_get_fs_type):  # pylint: disable=unused-argument
         """Check compatibility check passes when zfs param is set correctly"""
 
         with tempfile.NamedTemporaryFile(
@@ -141,9 +139,7 @@ class TestBmapHelpers(unittest.TestCase):
                 self.assertTrue(BmapHelpers.is_compatible_file_system(fobj.name))
 
     @patch.object(BmapHelpers, "get_file_system_type", return_value="zfs")
-    def test_is_compatible_file_system_zfs_invalid(
-        self, mock_get_fs_type
-    ):  # pylint: disable=unused-argument
+    def test_is_compatible_file_system_zfs_invalid(self, mock_get_fs_type):  # pylint: disable=unused-argument
         """Check compatibility check fails when zfs param is set incorrectly"""
 
         with tempfile.NamedTemporaryFile(
@@ -156,9 +152,7 @@ class TestBmapHelpers(unittest.TestCase):
                 self.assertFalse(BmapHelpers.is_compatible_file_system(fobj.name))
 
     @patch.object(BmapHelpers, "get_file_system_type", return_value="ext4")
-    def test_is_compatible_file_system_ext4(
-        self, mock_get_fs_type
-    ):  # pylint: disable=unused-argument
+    def test_is_compatible_file_system_ext4(self, mock_get_fs_type):  # pylint: disable=unused-argument
         """Check non-zfs file systems pass compatibility checks"""
 
         with tempfile.NamedTemporaryFile(
