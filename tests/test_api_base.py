@@ -89,9 +89,9 @@ def _generate_compressed_files(file_path, delete=True):
 
     compressors = [
         ("bzip2", None, ".bz2", "-c -k"),
-        ("pbzip2", None, ".p.bz2", "-c -k"),
+        ("pbzip2", None, ".p.bz2", "-p1 -c -k"),
         ("gzip", None, ".gz", "-c"),
-        ("pigz", None, ".p.gz", "-c -k"),
+        ("pigz", None, ".p.gz", "-p 1 -c -k"),
         ("xz", None, ".xz", "-c -k"),
         ("lzop", None, ".lzo", "-c -k"),
         ("lz4", None, ".lz4", "-c -k"),
