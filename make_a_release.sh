@@ -85,8 +85,8 @@ printf "%s" "$new_ver" | egrep -q -x '[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+' 
 ask_question "Did you update the man page"
 ask_question "Did you update tests: test-data and oldcodebase"
 
-# Change the version in the 'bmaptool/CLI.py' file
-sed -i -e "s/^VERSION = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/VERSION = \"$new_ver\"/" src/bmaptool/CLI.py
+# Change the version in the package
+sed -i -e "s/^__version__ = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/__version__ = \"$new_ver\"/" src/bmaptool/__init__.py
 # Sed the version in the RPM spec file
 sed -i -e "s/^Version: [0-9]\+\.[0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmaptool.spec
 # Remove the "rc_num" macro from the RPM spec file to make sure we do not have
