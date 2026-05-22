@@ -45,7 +45,7 @@ import urllib.parse
 from typing import NamedTuple
 from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
 
-VERSION = "3.9.0"
+from . import __version__ as VERSION
 
 log = logging.getLogger()  # pylint: disable=C0103
 

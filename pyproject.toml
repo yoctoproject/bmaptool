@@ -58,4 +58,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
-path = "src/bmaptool/CLI.py"
+path = "src/bmaptool/__init__.py"
