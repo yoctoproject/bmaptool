@@ -72,3 +72,8 @@ jobs:
         run: python3 -m pip install ruff==0.15.14
       - name: ruff format --check
         run: ruff format --check .
+      - name: Install pip-audit
+        run: python3 -m pip install pip-audit==2.10.0
+      - name: pip-audit
+        continue-on-error: true
+        run: pip-audit .
