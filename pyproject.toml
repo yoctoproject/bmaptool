@@ -8,7 +8,7 @@ dependencies = [
     # and no longer functions correctly
     #"gpg >= 1.10.0",
 ]
-requires-python = ">= 3.8"
+requires-python = ">= 3.9"
 authors = [
     {name = "Joshua Watt", email = "JPEWhacker@gmail.com"},
     {name = "Trevor Woerner", email = "twoerner@gmail.com"},
@@ -23,11 +23,12 @@ classifiers = [
     "Topic :: Software Development :: Embedded Systems",
     "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.optional-dependencies]
