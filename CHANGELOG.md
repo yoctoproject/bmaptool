@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `.git-blame-ignore-revs` so `git blame` skips the one-time tree-wide reformat.
+- `.github/dependabot.yml` opening weekly grouped pull requests for GitHub Actions and pip.
+- Non-blocking `pip-audit` step in the CI lint job.
 ### Changed
+- Drop Python 3.8 from the supported set; add 3.13 and 3.14.
+- Replace `black` with `ruff` for code formatting; run `ruff format --check` in CI.
+- Apply a one-time tree-wide `ruff format` reformat to the entire codebase.
+- Pin third-party CI actions by 40-character SHA.
+- Declare `permissions: contents: read` on the CI workflow and on each job.
+- Disable `fail-fast` on the CI test matrix so a failure on one Python version does not cancel the rest.
+- Single-thread `pbzip2` and `pigz` in the api_base test to avoid OOM events on shared CI runners.
+### Removed
+- The historical pre-Python-3 `BmapCopy` modules under `tests/oldcodebase/` and the backward-compat half of `tests/test_compat.py`.
+- `six` from `[project.optional-dependencies].dev` (no longer needed without the backward-compat test).
 
 ## [3.9.0]
 
