@@ -19,9 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disable `fail-fast` on the CI test matrix so a failure on one Python version does not cancel the rest.
 - Single-thread `pbzip2` and `pigz` in the api_base test to avoid OOM events on shared CI runners.
 - Reduce `maintainers = [...]` to the single active maintainer (Trevor Woerner) and correct `authors = [...]` to list only the project's original author, Artem Bityutskiy.
+- README: add a "Downstream packaging" subsection pointing at distribution trackers.
+- `make_a_release.sh`: drop the distro-packaging hunks (RPM version sed, deb and RPM changelog rewrites) along with the editor-prompt block and `format_changelog` helper that fed them.
 ### Removed
 - The historical pre-Python-3 `BmapCopy` modules under `tests/oldcodebase/` and the backward-compat half of `tests/test_compat.py`.
 - `six` from `[project.optional-dependencies].dev` (no longer needed without the backward-compat test).
+- The in-tree `debian/` source-package tree.
+- The in-tree `packaging/` RPM tree (`bmaptool.spec`, `bmaptool.changes`).
 
 ## [3.9.0]
 
