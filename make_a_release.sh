@@ -55,20 +55,6 @@ ask_question() {
 	done
 }
 
-format_changelog() {
-	local logfile="$1"; shift
-	local pfx1="$1"; shift
-	local pfx2="$1"; shift
-	local pfx_len="$(printf "%s" "$pfx1" | wc -c)"
-	local width="$((80-$pfx_len))"
-
-	while IFS= read -r line; do
-		printf "%s\n" "$line" | fold -s -w "$width" | \
-			sed -e "1 s/^/$pfx1/" | sed -e "1! s/^/$pfx2/" | \
-			sed -e "s/[\t ]\+$//"
-	done < "$logfile"
-}
-
 [ $# -eq 0 ] && usage
 [ $# -eq 1 ] || fatal "insufficient or too many arguments"
 
@@ -87,50 +73,10 @@ ask_question "Did you update tests: test-data"
 
 # Change the version in the package
 sed -i -e "s/^__version__ = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"$/__version__ = \"$new_ver\"/" src/bmaptool/__init__.py
-# Sed the version in the RPM spec file
-sed -i -e "s/^Version: [0-9]\+\.[0-9]\+\.[0-9]\+$/Version: $new_ver/" packaging/bmaptool.spec
-# Remove the "rc_num" macro from the RPM spec file to make sure we do not have
-# the "-rcX" part in the release version
-sed -i -e '/^%define[[:blank:]]\+rc_num[[:blank:]]\+[[:digit:]]\+[[:blank:]]*$/d' packaging/bmaptool.spec
 # update man page title line (.TH)
 export MANVERSTR="\"bmaptool $new_ver\""
 export MANDATE="\"$(date +"%B %Y")\""
 sed -i -e "s/\.TH.*$/\.TH BMAPTOOL \"1\" $MANDATE $MANVERSTR \"User Commands\"/g" docs/man1/bmaptool.1
-
-# Ask the maintainer for changelog lines
-logfile="$(mktemp -t "$PROG.XXXX")"
-cat > "$logfile" <<EOF
-# Please, provide changelog lines for the RPM and Deb packages.
-# Please, use one line per changelog entry, lines will be wrapped
-# automatically.
-# Lines starting with the "#" symbol will be removed.
-EOF
-
-if [ -z "${EDITOR+x}" ]; then
-	EDITOR="vim"
-fi
-"$EDITOR" "$logfile"
-
-# Remove comments and blank lines
-sed -i -e '/^#.*$/d' -e'/^$/d' "$logfile"
-
-# Prepare Debian changelog
-deblogfile="$(mktemp -t "$PROG.XXXX")"
-printf "%s\n\n" "bmaptool ($new_ver) unstable; urgency=low" > "$deblogfile"
-format_changelog "$logfile" "  * " "    " >> "$deblogfile"
-printf "\n%s\n\n" " -- Trevor Woerner <twoerner@gmail.com> $(date -R)" >> "$deblogfile"
-cat debian/changelog >> "$deblogfile"
-mv "$deblogfile" debian/changelog
-
-# Prepare RPM changelog
-rpmlogfile="$(mktemp -t "$PROG.XXXX")"
-printf "%s\n" "$(date --utc) - Trevor Woerner <twoerner@gmail.com> ${new_ver}-1" > "$rpmlogfile"
-format_changelog "$logfile" "- " "  " >> "$rpmlogfile"
-printf "\n"  >> "$rpmlogfile"
-cat packaging/bmaptool.changes >> "$rpmlogfile"
-mv "$rpmlogfile" packaging/bmaptool.changes
-
-rm "$logfile"
 
 # Commit the changes
 git commit -a -s -m "Release version $new_ver"

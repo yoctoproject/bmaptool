@@ -335,6 +335,22 @@ Finally, to run tests use `unittest`:
 python3 -m unittest -bv
 ```
 
+## Downstream packaging
+
+`bmaptool` is packaged for several Linux distributions independently
+of this repository. If you are looking to install `bmaptool` from
+your distribution's package manager rather than from source, the
+following trackers are good starting points:
+
+* Debian: <https://tracker.debian.org/pkg/bmap-tools>
+* Ubuntu: <https://packages.ubuntu.com/search?keywords=bmap-tools>
+* openSUSE: <https://software.opensuse.org/package/bmaptool>
+* Fedora: <https://packages.fedoraproject.org/pkgs/bmap-tools/>
+* Arch (AUR): <https://aur.archlinux.org/packages/bmap-tools>
+
+Downstream packagers maintain `bmaptool` independently; please file
+packaging bugs with your distribution, not with this project.
+
 ## Project and maintainer
 
 The bmaptool project implements bmap-related tools and API modules. The entire
