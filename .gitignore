@@ -63,4 +63,7 @@ ENV/
 
 #vscode
 .vscode/
+
+# codex agent state
+.codex/
 .noseids
