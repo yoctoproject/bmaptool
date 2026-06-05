@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disable `fail-fast` on the CI test matrix so a failure on one Python version does not cancel the rest.
 - Single-thread `pbzip2` and `pigz` in the api_base test to avoid OOM events on shared CI runners.
 - Reduce `maintainers = [...]` to the single active maintainer (Trevor Woerner) and correct `authors = [...]` to list only the project's original author, Artem Bityutskiy.
+- README "Project and maintainer" section: reduce the "currently maintained by" list to the single active maintainer, matching the `pyproject.toml` `maintainers = [...]` block.
 - README: add a "Downstream packaging" subsection pointing at distribution trackers.
 - `make_a_release.sh`: drop the distro-packaging hunks (RPM version sed, deb and RPM changelog rewrites) along with the editor-prompt block and `format_changelog` helper that fed them.
 ### Removed

@@ -357,10 +357,7 @@ The bmaptool project implements bmap-related tools and API modules. The entire
 project is written in python.
 
 The project author is Artem Bityutskiy (dedekind1@gmail.com). The project
-is currently maintained by:
-* Trevor Woerner (twoerner@gmail.com)
-* Joshua Watt (JPEWhacker@gmail.com)
-* Tim Orling (ticotimo@gmail.com)
+is currently maintained by Trevor Woerner (twoerner@gmail.com).
 
 Project git repository is here:
 https://github.com/yoctoproject/bmaptool
