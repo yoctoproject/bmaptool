@@ -521,6 +521,9 @@ def open_files(args):
             "(you specified the same path for them)"
         )
 
+    if args.no_create and not os.path.exists(args.dest):
+        error_out(f"Destination file {args.dest} does not exist.")
+
     if args.removable_device:
         if not os.path.exists(args.dest):
             # Missing device could occur often enough with removable devices,
@@ -859,6 +862,9 @@ def parse_arguments():
     # The --removable-device option
     text = "copy on destination file only if it is a removable block device"
     parser_copy.add_argument("--removable-device", action="store_true", help=text)
+
+    text = "do not create a new file if the target does not exist"
+    parser_copy.add_argument("--no-create", action="store_true", help=text)
 
     return parser.parse_args()
 
