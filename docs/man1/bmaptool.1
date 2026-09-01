@@ -297,8 +297,9 @@ Copy non-compressed image from standard input to block device "/dev/sdg" using b
 Generate bmap for a regular file IMAGE. Internally, this command uses the
 Linux "FIEMAP" ioctl to find out which IMAGE blocks are mapped. However, if
 "FIEMAP" is not supported, the "SEEK_HOLE" feature of the "lseek" system call
-is used instead. By default, the resulting bmap file is printed to stdout,
-unless the "--output" option is used.
+is used instead. Generating a bmap therefore requires the file system to
+support either "FIEMAP" or "SEEK_HOLE"/"SEEK_DATA". By default, the resulting
+bmap file is printed to stdout, unless the "--output" option is used.
 
 .PP
 The IMAGE file is always synchronized before the block map is generated. And it

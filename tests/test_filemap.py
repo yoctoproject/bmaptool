@@ -30,6 +30,7 @@ import random
 import itertools
 import tests.helpers
 from itertools import zip_longest
+from unittest import mock
 from bmaptool import Filemap
 
 # This is a work-around for Centos 6
@@ -136,6 +137,53 @@ def _do_test(f_image, filemap, mapped, unmapped):
         blocks_cnt = random.randint(1, filemap.blocks_cnt - first_block)
         _check_ranges(f_image, filemap, first_block, blocks_cnt, mapped, "mapped")
         _check_ranges(f_image, filemap, first_block, blocks_cnt, unmapped, "unmapped")
+
+
+class TestFilemapSelection(unittest.TestCase):
+    """Verify selection and fallback between file mapping implementations."""
+
+    def test_fallback_to_seek_when_fiemap_is_not_supported(self):
+        """Use FilemapSeek when FilemapFiemap is unavailable."""
+
+        image = object()
+        seek_instance = object()
+
+        with mock.patch.object(
+            Filemap,
+            "FilemapFiemap",
+            side_effect=Filemap.ErrorNotSupp("FIEMAP unsupported"),
+        ) as fiemap_mock:
+            with mock.patch.object(
+                Filemap,
+                "FilemapSeek",
+                return_value=seek_instance,
+            ) as seek_mock:
+                result = Filemap.filemap(image)
+
+        self.assertIs(result, seek_instance)
+        fiemap_mock.assert_called_once_with(image)
+        seek_mock.assert_called_once_with(image)
+
+    def test_seek_error_propagates_when_both_methods_are_not_supported(self):
+        """Propagate FilemapSeek failure when neither implementation works."""
+
+        image = object()
+
+        with mock.patch.object(
+            Filemap,
+            "FilemapFiemap",
+            side_effect=Filemap.ErrorNotSupp("FIEMAP unsupported"),
+        ) as fiemap_mock:
+            with mock.patch.object(
+                Filemap,
+                "FilemapSeek",
+                side_effect=Filemap.ErrorNotSupp("SEEK unsupported"),
+            ) as seek_mock:
+                with self.assertRaisesRegex(Filemap.ErrorNotSupp, "SEEK unsupported"):
+                    Filemap.filemap(image)
+
+        fiemap_mock.assert_called_once_with(image)
+        seek_mock.assert_called_once_with(image)
 
 
 class TestFilemap(unittest.TestCase):
