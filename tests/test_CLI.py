@@ -38,6 +38,26 @@ testkeys = {
 }
 
 
+class TestCLIHelp(unittest.TestCase):
+    def test_help_documentation_url(self):
+        bmaptool = os.path.join(os.path.dirname(sys.executable), "bmaptool")
+        completed_process = subprocess.run(
+            [bmaptool, "--help"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(completed_process.returncode, 0)
+        self.assertIn(
+            b"https://github.com/yoctoproject/bmaptool",
+            completed_process.stdout,
+        )
+        self.assertNotIn(
+            b"source.tizen.org/documentation/reference/bmaptool",
+            completed_process.stdout,
+        )
+
+
 class TestCLI(unittest.TestCase):
     def test_valid_signature(self):
         completed_process = subprocess.run(
