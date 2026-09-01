@@ -28,6 +28,8 @@ files and makes sure the module returns correct information about the holes.
 import sys
 import random
 import itertools
+from unittest import mock
+
 import tests.helpers
 from itertools import zip_longest
 from bmaptool import Filemap
@@ -136,6 +138,64 @@ def _do_test(f_image, filemap, mapped, unmapped):
         blocks_cnt = random.randint(1, filemap.blocks_cnt - first_block)
         _check_ranges(f_image, filemap, first_block, blocks_cnt, mapped, "mapped")
         _check_ranges(f_image, filemap, first_block, blocks_cnt, unmapped, "unmapped")
+
+
+class TestFilemapSeekPartialBlocks(unittest.TestCase):
+    """Verify SEEK ranges conservatively classify partially mapped blocks."""
+
+    @staticmethod
+    def _make_filemap():
+        block_size = 1024 * 1024
+
+        filemap = Filemap.FilemapSeek.__new__(Filemap.FilemapSeek)
+        filemap.block_size = block_size
+        filemap.image_size = block_size
+        filemap.blocks_cnt = 1
+        filemap._f_image = object()
+        filemap._f_image_needs_close = False
+
+        return filemap
+
+    @staticmethod
+    def _partial_block_lseek(file_obj, offset, whence):
+        del file_obj
+
+        data_end = 4096
+        block_size = 1024 * 1024
+
+        if whence == Filemap._SEEK_DATA:
+            if offset < data_end:
+                return offset
+            return -1
+
+        if whence == Filemap._SEEK_HOLE:
+            if offset < data_end:
+                return data_end
+            if offset < block_size:
+                return offset
+            return -1
+
+        raise AssertionError("unexpected lseek mode")
+
+    def test_partial_data_block_is_mapped(self):
+        filemap = self._make_filemap()
+
+        with mock.patch.object(
+            Filemap, "_lseek", side_effect=self._partial_block_lseek
+        ):
+            mapped = list(filemap.get_mapped_ranges(0, 1))
+
+        self.assertEqual(mapped, [(0, 0)])
+
+    def test_partial_hole_does_not_make_block_unmapped(self):
+        filemap = self._make_filemap()
+
+        with mock.patch.object(
+            Filemap, "_lseek", side_effect=self._partial_block_lseek
+        ):
+            unmapped = list(filemap.get_unmapped_ranges(0, 1))
+
+        self.assertEqual(unmapped, [])
 
 
 class TestFilemap(unittest.TestCase):
