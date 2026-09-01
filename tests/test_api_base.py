@@ -43,6 +43,7 @@ try:
     import unittest2 as unittest  # pylint: disable=F0401
 except ImportError:
     import unittest
+from unittest import mock
 
 
 class Error(Exception):
@@ -238,26 +239,60 @@ def _do_test(image, image_size, delete=True):
 
     for compressed in _generate_compressed_files(image, delete=delete):
         helpers.copy_and_verify_image(
-            compressed, f_copy.name, f_bmap1.name, image_chksum, image_size
+            compressed, f_copy.name, None, image_chksum, image_size
         )
 
         # Test without setting the size
-        helpers.copy_and_verify_image(
-            compressed, f_copy.name, f_bmap1.name, image_chksum, None
-        )
+        helpers.copy_and_verify_image(compressed, f_copy.name, None, image_chksum, None)
 
         # Append a "file:" prefix to make BmapCopy use urllib
+        compressed = "file:" + compressed
         helpers.copy_and_verify_image(
-            compressed, f_copy.name, f_bmap1.name, image_chksum, image_size
+            compressed, f_copy.name, None, image_chksum, image_size
         )
-        helpers.copy_and_verify_image(
-            compressed, f_copy.name, f_bmap1.name, image_chksum, None
-        )
+        helpers.copy_and_verify_image(compressed, f_copy.name, None, image_chksum, None)
 
     # Close temporary files, which will also remove them
     f_copy.close()
     f_bmap1.close()
     f_bmap2.close()
+
+
+class TestCompressedCopyWithoutBmap(unittest.TestCase):
+    """Verify compressed copying without a bmap."""
+
+    def test_copy_matrix(self):
+        compressed = "compressed.img"
+
+        with tempfile.NamedTemporaryFile("wb+", dir=".") as f_image:
+            f_image.write(b"x")
+            f_image.flush()
+            image_size = os.path.getsize(f_image.name)
+
+            with (
+                mock.patch(__name__ + "._compare_holes"),
+                mock.patch(
+                    __name__ + "._generate_compressed_files",
+                    return_value=[compressed],
+                ),
+                mock.patch.object(
+                    helpers, "copy_and_verify_image"
+                ) as copy_and_verify_image,
+            ):
+                _do_test(f_image.name, image_size)
+
+        actual = [
+            (call.args[0], call.args[2], call.args[4])
+            for call in copy_and_verify_image.call_args_list[-4:]
+        ]
+        expected = [
+            (compressed, None, image_size),
+            (compressed, None, None),
+            ("file:" + compressed, None, image_size),
+            ("file:" + compressed, None, None),
+        ]
+
+        self.assertEqual(actual, expected)
 
 
 class TestCreateCopy(unittest.TestCase):
