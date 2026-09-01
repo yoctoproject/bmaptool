@@ -294,10 +294,16 @@ class FilemapSeek(_FilemapBase):
             if end > limit:
                 end = limit
 
-            start_blk = start // self.block_size
-            end_blk = end // self.block_size - 1
-            _log.debug("FilemapSeek: yielding range (%d, %d)" % (start_blk, end_blk))
-            yield (start_blk, end_blk)
+            if whence1 == _SEEK_DATA:
+                start_blk = start // self.block_size
+                end_blk = (end - 1) // self.block_size
+            else:
+                start_blk = (start + self.block_size - 1) // self.block_size
+                end_blk = end // self.block_size - 1
+
+            if start_blk <= end_blk:
+                _log.debug("FilemapSeek: yielding range (%d, %d)", start_blk, end_blk)
+                yield (start_blk, end_blk)
 
     def get_mapped_ranges(self, start, count):
         """Refer to the '_FilemapBase' class for the documentation."""
