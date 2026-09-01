@@ -329,6 +329,20 @@ pip install -e '.[dev]'
 Note: You may need to install the development package for `libgpgme` on your
       system. Depending on your OS this may be called `libgpgme-dev`.
 
+The GPG Python bindings are provided by the operating system rather than PyPI.
+For example, on Debian and Ubuntu install the `python3-gpg` package. To run the
+GPG tests from a virtual environment, create it with access to system site
+packages:
+
+```bash
+sudo apt install python3-gpg
+python3 -m venv --system-site-packages .venv
+. .venv/bin/activate
+pip install -e '.[dev]'
+```
+
+Without the GPG Python bindings, the GPG-specific tests are skipped.
+
 Finally, to run tests use `unittest`:
 
 ```bash
