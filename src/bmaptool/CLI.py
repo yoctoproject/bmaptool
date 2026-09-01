@@ -17,7 +17,7 @@
 """
 A tool for creating block maps (bmap) and copying disk images using bmap files.
 Documentation can be found here:
-source.tizen.org/documentation/reference/bmaptool
+https://github.com/yoctoproject/bmaptool
 """
 
 # Disable the following pylint recommendations:
