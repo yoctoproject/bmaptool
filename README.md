@@ -31,10 +31,11 @@ brought a number of advantages.
 
 ## Usage
 
-`bmaptool` supports 2 subcommands:
+`bmaptool` supports 3 subcommands:
 * `copy` - copy a file to another file using bmap or flash an image to a block
   device
 * `create` - create a bmap for a file
+* `verify` - verify an image file against its bmap file
 
 You can get usage reference for `bmaptool` and all the supported command using
 the `-h` or `--help` options:
@@ -43,6 +44,19 @@ the `-h` or `--help` options:
 $ bmaptool -h # General bmaptool help
 $ bmaptool <cmd> -h # Help on the <cmd> sub-command
 ```
+
+`bmap-send` is a separate wrapper around `scp` and `ssh` which sends an image
+together with its bmap file to a remote host. The bmap file must be generated
+first; locally it is expected to be `<image>.bmap`, and remotely it is stored
+next to the image as `<image>.bmap`:
+
+```bash
+$ bmaptool create image.raw
+$ bmap-send image.raw user@host:/path/to/image.raw
+```
+
+By default `bmap-send` only transfers the files and does not verify the remote
+copy. Use `--verify` to run `bmaptool verify` on the remote host afterwards.
 
 You can also refer to the `bmaptool` manual page:
 ```bash
@@ -237,10 +251,24 @@ very quickly with `bmaptool` and the bmap file, because `bmaptool` will decompre
 the image on-the-fly and write only mapped areas.
 
 The additional benefit of using bmap for flashing is the checksum verification.
-Indeed, the `bmaptool create` command generates SHA256 checksums for all mapped
-block ranges, and the `bmaptool copy` command verifies the checksums while
-writing. Integrity of the bmap file itself is also protected by a SHA256
+Indeed, the `bmaptool create` command generates checksums for all mapped block
+ranges, and the `bmaptool copy` command verifies the checksums while writing.
+The default checksum algorithm is SHA256; SHA512 and BLAKE2b can be selected
+with `--checksum-type`. Integrity of the bmap file itself is also protected by a
 checksum and `bmaptool` verifies it before starting flashing.
+
+Large mapped ranges (at least 64 MiB) are split into 32 MiB ranges, so that
+checksums can be calculated in parallel. Use `-j`/`--jobs` to control the
+number of threads (the default is `min(4, CPU count)`). The same splitting
+makes it possible to verify an image in parallel with:
+
+```bash
+$ bmaptool verify image.raw.bmap
+```
+
+The image path is derived by stripping the `.bmap` suffix, so
+`image.raw.bmap` corresponds to `image.raw`. A different image path can be
+passed as the second argument.
 
 On top of this, the bmap file can be signed using OpenPGP (gpg) and bmaptool
 automatically verifies the signature if it is present. This allows for

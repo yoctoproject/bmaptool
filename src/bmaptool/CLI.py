@@ -43,7 +43,7 @@ import subprocess
 import re
 import urllib.parse
 from typing import NamedTuple
-from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
+from . import BmapCreate, BmapCopy, BmapHelpers, BmapVerify, TransRead
 
 from . import __version__ as VERSION
 
@@ -750,7 +750,9 @@ def create_command(args):
             error_out("cannot create a temporary file:\n%s", err)
 
     try:
-        creator = BmapCreate.BmapCreate(args.image, output, "sha256")
+        creator = BmapCreate.BmapCreate(
+            args.image, output, args.checksum_type, jobs=args.jobs
+        )
         creator.generate(not args.no_checksum)
     except BmapCreate.Error as err:
         error_out(err)
@@ -765,6 +767,91 @@ def create_command(args):
             % (creator.image_size_human, args.image)
         )
         log.warning("was the image handled incorrectly and holes were expanded?")
+
+
+_CHECKSUM_TYPES = ("sha256", "sha512", "blake2b")
+
+
+def _positive_int(value):
+    """An argparse type for a positive integer."""
+    try:
+        result = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("'%s' is not an integer" % value)
+
+    if result < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+
+    return result
+
+
+def _verify_progress(quiet):
+    """
+    Return a progress callback for 'bmaptool verify', or 'None' when progress
+    reporting is not needed.
+    """
+
+    if quiet or not sys.stderr.isatty():
+        return None
+
+    state = {"percent": -1}
+
+    def callback(done, total):
+        percent = int(done * 100 / total) if total else 100
+        if percent == state["percent"]:
+            return
+
+        state["percent"] = percent
+        sys.stderr.write(
+            "\rVerifying: %3d%% (%s / %s)"
+            % (
+                percent,
+                BmapHelpers.human_size(done),
+                BmapHelpers.human_size(total),
+            )
+        )
+        sys.stderr.flush()
+        if percent == 100:
+            sys.stderr.write("\n")
+
+    return callback
+
+
+def verify_command(args):
+    """
+    Verify an image file against a bmap file. This is similar to
+    'sha256sum --check': the checksums are read from the bmap file and the
+    mapped block ranges of the image are verified against them.
+    """
+
+    try:
+        verifier = BmapVerify.BmapVerify(
+            args.bmap,
+            args.image,
+            jobs=args.jobs,
+            chksum_type=args.checksum_type,
+        )
+        ok = verifier.verify(progress=_verify_progress(args.quiet))
+    except BmapVerify.Error as err:
+        print("%s: FAILED" % (args.image or args.bmap), file=sys.stderr)
+        log.error(err)
+        raise SystemExit(1)
+
+    if not ok:
+        print("%s: FAILED" % verifier.image_path, file=sys.stderr)
+        for message in verifier.failure_messages():
+            log.error(message)
+        raise SystemExit(1)
+
+    if not args.quiet:
+        print(
+            "%s: OK (%d range(s), %s verified)"
+            % (
+                verifier.image_path,
+                verifier.verified_ranges,
+                BmapHelpers.human_size(verifier.verified_bytes),
+            )
+        )
 
 
 def parse_arguments():
@@ -806,6 +893,53 @@ def parse_arguments():
     # The --no-checksum option
     text = "do not generate the checksum for block ranges in the bmap"
     parser_create.add_argument("--no-checksum", action="store_true", help=text)
+
+    # The --jobs option
+    text = (
+        "number of threads used to calculate checksums "
+        "(default: min(4, CPU count))"
+    )
+    parser_create.add_argument("-j", "--jobs", type=_positive_int, help=text)
+
+    # The --checksum-type option
+    text = "checksum algorithm to use (default: sha256)"
+    parser_create.add_argument(
+        "--checksum-type", choices=_CHECKSUM_TYPES, default="sha256", help=text
+    )
+
+    #
+    # Create parser for the "verify" command
+    #
+    text = "verify an image file against a bmap file (like 'sha256sum --check')"
+    parser_verify = subparsers.add_parser("verify", help=text)
+    parser_verify.set_defaults(func=verify_command)
+
+    # The first positional argument - bmap file
+    text = "the bmap file to verify"
+    parser_verify.add_argument("bmap", help=text)
+
+    # The second positional argument - image file
+    text = (
+        "the image file to verify (default: the bmap file name without the "
+        "'.bmap' suffix)"
+    )
+    parser_verify.add_argument("image", nargs="?", help=text)
+
+    # The --jobs option
+    text = (
+        "number of threads used to verify checksums "
+        "(default: min(4, CPU count))"
+    )
+    parser_verify.add_argument("-j", "--jobs", type=_positive_int, help=text)
+
+    # The --checksum-type option
+    text = (
+        "require the bmap file to use this checksum algorithm "
+        "(default: use the algorithm from the bmap file)"
+    )
+    parser_verify.add_argument(
+        "--checksum-type", choices=_CHECKSUM_TYPES, default=None, help=text
+    )
 
     #
     # Create parser for the "copy" command

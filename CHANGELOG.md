@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- `bmaptool verify` subcommand which verifies an image file against a bmap file (similar to `sha256sum --check`), with multi-threaded checksum verification.
+- `bmap-send` wrapper around `scp`/`ssh` which sends an image and its pre-generated bmap file to a remote host.
+- `-j`/`--jobs` option for `bmaptool create` and `bmaptool verify` (default: `min(4, CPU count)`).
+- `--checksum-type` option for `bmaptool create` (SHA256, SHA512, BLAKE2b) and `bmaptool verify`.
 - `.git-blame-ignore-revs` so `git blame` skips the one-time tree-wide reformat.
 - `.github/dependabot.yml` opening weekly grouped pull requests for GitHub Actions and pip.
 - Non-blocking `pip-audit` step in the CI lint job.
 ### Changed
+- Mapped ranges of at least 64 MiB are split into 32 MiB ranges, so checksums can be calculated in parallel and the bmap file can be verified in parallel.
+- Checksums are read from the image file in 8 MiB chunks instead of 1 MiB chunks.
 - Drop Python 3.8 from the supported set; add 3.13 and 3.14.
 - Replace `black` with `ruff` for code formatting; run `ruff format --check` in CI.
 - Apply a one-time tree-wide `ruff format` reformat to the entire codebase.
