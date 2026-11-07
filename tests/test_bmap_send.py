@@ -18,6 +18,7 @@ import argparse
 import os
 import shutil
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -36,18 +37,26 @@ class TestBmapSend(unittest.TestCase):
             image.truncate(IMAGE_SIZE)
 
         self.bmap = self.image + ".bmap"
-        with open(self.bmap, "w") as bmap:
-            bmap.write(
-                '<?xml version="1.0" ?>\n'
-                '<bmap version="2.0">\n'
-                "  <ImageSize> %d </ImageSize>\n"
-                "</bmap>\n" % IMAGE_SIZE
-            )
+        self._write_bmap()
 
         # Silence the informational messages printed by '_send()'.
         patcher = mock.patch("builtins.print")
         patcher.start()
         self.addCleanup(patcher.stop)
+
+    def _write_bmap(self, mtime=None):
+        extra = ""
+        if mtime is not None:
+            extra = "  <SourceImageMtime> %s </SourceImageMtime>\n" % mtime
+
+        with open(self.bmap, "w") as bmap:
+            bmap.write(
+                '<?xml version="1.0" ?>\n'
+                '<bmap version="2.0">\n'
+                "  <ImageSize> %d </ImageSize>\n"
+                "%s"
+                "</bmap>\n" % (IMAGE_SIZE, extra)
+            )
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
@@ -58,6 +67,7 @@ class TestBmapSend(unittest.TestCase):
             "destination": "user@host:/data/vm.raw",
             "port": None,
             "verify": False,
+            "yes": False,
         }
         values.update(kwargs)
         return argparse.Namespace(**values)
@@ -84,6 +94,62 @@ class TestBmapSend(unittest.TestCase):
     def test_load_bmap_image_size(self):
         """The image size must be read from the bmap file."""
         self.assertEqual(BmapSend._load_bmap_image_size(self.bmap), IMAGE_SIZE)
+
+    def test_load_bmap_info(self):
+        """Image size and source mtime must be read from the bmap file."""
+        self._write_bmap("2026-11-07 09:30:00")
+        size, mtime = BmapSend._load_bmap_info(self.bmap)
+        self.assertEqual(size, IMAGE_SIZE)
+        self.assertEqual(mtime, "2026-11-07 09:30:00")
+
+    def test_send_mtime_mismatch_abort(self):
+        """A changed source mtime must abort when the user answers 'n'."""
+        self._write_bmap("2000-01-01 00:00:00")
+        with mock.patch.object(BmapSend, "_run") as run, mock.patch(
+            "builtins.input", return_value="n"
+        ):
+            with self.assertRaises(BmapSend.Error):
+                BmapSend._send(self._args())
+        run.assert_not_called()
+
+    def test_send_mtime_mismatch_continue(self):
+        """A changed source mtime must continue when the user answers 'y'."""
+        self._write_bmap("2000-01-01 00:00:00")
+        with mock.patch.object(BmapSend, "_run") as run, mock.patch(
+            "builtins.input", return_value="y"
+        ):
+            BmapSend._send(self._args())
+        self.assertEqual(len(run.call_args_list), 2)
+
+    def test_send_mtime_mismatch_continue_yes(self):
+        """'--yes' must skip the mtime prompt."""
+        self._write_bmap("2000-01-01 00:00:00")
+        with mock.patch.object(BmapSend, "_run") as run:
+            BmapSend._send(self._args(yes=True))
+        self.assertEqual(len(run.call_args_list), 2)
+
+    def test_send_mtime_mismatch_eof(self):
+        """EOF on stdin must abort instead of transferring."""
+        self._write_bmap("2000-01-01 00:00:00")
+        with mock.patch.object(BmapSend, "_run") as run, mock.patch(
+            "builtins.input", side_effect=EOFError
+        ):
+            with self.assertRaises(BmapSend.Error):
+                BmapSend._send(self._args())
+        run.assert_not_called()
+
+    def test_send_mtime_match(self):
+        """A matching source mtime must not prompt."""
+        mtime = time.strftime(
+            "%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(self.image))
+        )
+        self._write_bmap(mtime)
+        with mock.patch.object(BmapSend, "_run") as run, mock.patch(
+            "builtins.input"
+        ) as prompt:
+            BmapSend._send(self._args())
+        prompt.assert_not_called()
+        self.assertEqual(len(run.call_args_list), 2)
 
     def test_send_without_verify(self):
         """By default only the image and the bmap are sent, in that order."""

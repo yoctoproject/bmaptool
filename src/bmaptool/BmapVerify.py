@@ -29,7 +29,9 @@ import hashlib
 import io
 import logging
 import os
+import shlex
 import stat
+import time
 from concurrent.futures import ThreadPoolExecutor
 from xml.etree import ElementTree
 
@@ -42,6 +44,8 @@ READ_CHUNK_SIZE = 8 * 1024 * 1024
 # Maximum amount of failed ranges reported, so that a completely broken image
 # does not flood the terminal.
 _MAX_REPORTED_FAILURES = 20
+# Maximum amount of failed ranges included in the repair scripts.
+_MAX_REPAIR_RANGES = 1000
 
 _METADATA_TAGS = frozenset(
     (
@@ -52,6 +56,7 @@ _METADATA_TAGS = frozenset(
         "ChecksumType",
         "BmapFileChecksum",
         "BmapFileSHA1",
+        "SourceImageMtime",
     )
 )
 
@@ -138,6 +143,7 @@ class BmapVerify(object):
         self.mapped_cnt = None
         self.cs_type = None
         self._cs_len = None
+        self.source_image_mtime = None
         self.ranges = []
 
         self.verified_ranges = 0
@@ -286,6 +292,8 @@ class BmapVerify(object):
                 self.mapped_cnt = int(metadata["MappedBlocksCount"])
             except ValueError as err:
                 raise Error("bad 'MappedBlocksCount' value: %s" % err)
+
+        self.source_image_mtime = metadata.get("SourceImageMtime")
 
         if "ChecksumType" in metadata:
             self.cs_type = metadata["ChecksumType"].lower()
@@ -483,6 +491,33 @@ class BmapVerify(object):
                 ):
                     yield result
 
+    def _warn_if_image_mtime_differs(self):
+        """
+        Warn when the image modification time differs from the one recorded in
+        the bmap. This is informational only: timestamps can legitimately
+        differ between the source and target hosts.
+        """
+
+        if self.source_image_mtime is None:
+            return
+
+        try:
+            image_mtime = time.strftime(
+                "%Y-%m-%d %H:%M:%S",
+                time.localtime(os.path.getmtime(self.image_path)),
+            )
+        except OSError:
+            return
+
+        if image_mtime != self.source_image_mtime:
+            _log.warning(
+                "bmap source image mtime is '%s', but '%s' has mtime '%s' "
+                "(timestamps may differ across hosts)",
+                self.source_image_mtime,
+                self.image_path,
+                image_mtime,
+            )
+
     def verify(self, progress=None):
         """
         Verify the image file against the bmap file. Returns 'True' if all
@@ -508,6 +543,7 @@ class BmapVerify(object):
 
         fd = self._open_image()
         try:
+            self._warn_if_image_mtime_differs()
             for first, last, ok, calculated, chksum in self._iter_results(fd):
                 self._consume_result(first, last, ok, calculated, chksum)
                 if ok is not None:
@@ -525,6 +561,213 @@ class BmapVerify(object):
             )
 
         return not self.failures
+
+    def bmap_path_str(self):
+        """Return the bmap path as a string suitable for command lines."""
+        if isinstance(self._bmap_path, str):
+            return self._bmap_path
+
+        name = getattr(self._bmap_path, "name", None)
+        if isinstance(name, str):
+            return name
+
+        return "<bmap-file>"
+
+    def _checksum_tool(self):
+        """Return the command line tool matching the bmap checksum type."""
+        tools = {
+            "sha1": "sha1sum",
+            "sha256": "sha256sum",
+            "sha512": "sha512sum",
+            "blake2b": "b2sum",
+        }
+        tool = tools.get(self.cs_type)
+        if tool is None:
+            raise Error(
+                "cannot generate repair scripts for checksum type '%s'"
+                % self.cs_type
+            )
+        return tool
+
+    def repair_scripts(self, source_image=None, bin_path=None):
+        """
+        Build two shell scripts which repair the failed block ranges.
+
+        The source script extracts the failed ranges from a known-good source
+        image and appends them to a single '<image>_retransfer.bin' file next
+        to the source image. The destination script writes that file back to
+        the target image with 'dd'.
+
+        Returns '(source_script, dest_script, total_size, included, hidden)',
+        where 'total_size' is the retransfer file size in bytes, 'included' is
+        the number of failed ranges covered by the scripts, and 'hidden' is the
+        number of failed ranges which did not fit into the scripts.
+        """
+
+        if source_image is None:
+            source_image = "/path/to/good/source.raw"
+
+        image_basename = os.path.basename(str(self.image_path))
+        if bin_path is None:
+            bin_path = "/path/to/%s_retransfer.bin" % image_basename
+
+        failures = sorted(
+            self.failures[:_MAX_REPAIR_RANGES], key=lambda item: item["first"]
+        )
+        hidden = len(self.failures) - len(failures)
+        checksum_tool = self._checksum_tool()
+        hash_suffix = self.cs_type
+
+        image_path = os.path.abspath(str(self.image_path))
+        bmap_path = self.bmap_path_str()
+        if bmap_path != "<bmap-file>":
+            bmap_path = os.path.abspath(bmap_path)
+
+        total_size = 0
+        bin_skip = 0
+        source_commands = []
+        dest_commands = []
+
+        for failure in failures:
+            first = failure["first"]
+            last = failure["last"]
+            count = last - first + 1
+            offset = first * self.block_size
+            total_size += min(
+                count * self.block_size, self.image_size - offset
+            )
+
+            source_commands.append(
+                'dd if="$SOURCE_IMAGE" bs=%d skip=%d count=%d '
+                'status=none >> "$OUTPUT"'
+                % (self.block_size, first, count)
+            )
+            dest_commands.append(
+                'dd if="$BIN" bs=%d skip=%d count=%d of="$IMAGE" '
+                'seek=%d conv=notrunc status=none'
+                % (self.block_size, bin_skip, count, first)
+            )
+            bin_skip += count
+
+        source_lines = [
+            "#!/bin/sh",
+            "set -e",
+            "",
+        ]
+        if hidden:
+            source_lines.append(
+                "# WARNING: only %d of %d failed ranges are included."
+                % (len(failures), len(self.failures))
+            )
+            source_lines.append("")
+
+        source_lines.extend(
+            [
+                "# Set this to the known-good source image:",
+                "SOURCE_IMAGE=%s" % shlex.quote(source_image),
+                "EXPECTED_IMAGE_SIZE=%d" % self.image_size,
+                'OUTPUT="$(dirname "$SOURCE_IMAGE")/'
+                '$(basename "$SOURCE_IMAGE")_retransfer.bin"',
+                "",
+                'if [ ! -r "$SOURCE_IMAGE" ]; then',
+                '    echo "error: cannot read $SOURCE_IMAGE" >&2',
+                "    exit 1",
+                "fi",
+                'if [ -f "$SOURCE_IMAGE" ]; then',
+                '    source_size=$(stat -c %s "$SOURCE_IMAGE")',
+                '    if [ "$source_size" -ne "$EXPECTED_IMAGE_SIZE" ]; then',
+                '        echo "error: $SOURCE_IMAGE has $source_size bytes, '
+                'expected $EXPECTED_IMAGE_SIZE" >&2',
+                "        exit 1",
+                "    fi",
+                "fi",
+                "",
+                'rm -f "$OUTPUT"',
+            ]
+        )
+        source_lines.extend(source_commands)
+        source_lines.extend(
+            [
+                "",
+                '%s "$OUTPUT" > "${OUTPUT}.%s"' % (checksum_tool, hash_suffix),
+                'echo "Created: $OUTPUT"',
+                'echo "Size: $(stat -c %s "$OUTPUT") bytes"',
+                "echo \"Hash: $(cut -d' ' -f1 \"${OUTPUT}.%s\")\""
+                % hash_suffix,
+                'echo "Transfer both $OUTPUT and ${OUTPUT}.%s to the '
+                'target host."' % hash_suffix,
+            ]
+        )
+
+        dest_lines = [
+            "#!/bin/sh",
+            "set -e",
+            "",
+            "# Set this to the target image and the transferred bin file:",
+            "IMAGE=%s" % shlex.quote(image_path),
+            "BIN=%s" % shlex.quote(bin_path),
+            "BMAP=%s" % shlex.quote(bmap_path),
+            "EXPECTED_SIZE=%d" % total_size,
+            "",
+            'if [ ! -r "$IMAGE" ]; then',
+            '    echo "error: cannot read $IMAGE" >&2',
+            "    exit 1",
+            "fi",
+            'if [ ! -r "$BIN" ]; then',
+            '    echo "error: cannot read $BIN" >&2',
+            "    exit 1",
+            "fi",
+            "",
+            'actual_size=$(stat -c %s "$BIN")',
+            'if [ "$actual_size" -ne "$EXPECTED_SIZE" ]; then',
+            '    echo "error: $BIN has $actual_size bytes, expected '
+            '$EXPECTED_SIZE" >&2',
+            "    exit 1",
+            "fi",
+            "",
+            'HASH_FILE="${BIN}.%s"' % hash_suffix,
+            'if [ -r "$HASH_FILE" ]; then',
+            "    expected_hash=$(cut -d' ' -f1 \"$HASH_FILE\")",
+            "    actual_hash=$(%s \"$BIN\" | cut -d' ' -f1)" % checksum_tool,
+            '    if [ "$actual_hash" != "$expected_hash" ]; then',
+            '        echo "error: hash mismatch for $BIN" >&2',
+            "        exit 1",
+            "    fi",
+            "else",
+            '    if [ "${ALLOW_MISSING_HASH:-0}" = "1" ]; then',
+            '        echo "warning: $HASH_FILE not found, continuing because '
+            'ALLOW_MISSING_HASH=1" >&2',
+            "    else",
+            '        echo "error: $HASH_FILE not found; refusing to repair '
+            'without a checksum" >&2',
+            '        echo "set ALLOW_MISSING_HASH=1 to override" >&2',
+            "        exit 1",
+            "    fi",
+            "fi",
+            "",
+        ]
+        dest_lines.extend(dest_commands)
+        dest_lines.extend(
+            [
+                "",
+                "sync",
+                'echo "Repair finished: %d range(s) written."' % len(failures),
+            ]
+        )
+        if hidden:
+            dest_lines.append(
+                'echo "WARNING: %d additional failed range(s) were not '
+                'included in these scripts." >&2' % hidden
+            )
+        dest_lines.append('echo "Run: bmaptool verify \\"$BMAP\\""')
+
+        return (
+            "\n".join(source_lines) + "\n",
+            "\n".join(dest_lines) + "\n",
+            total_size,
+            len(failures),
+            hidden,
+        )
 
     def failure_messages(self):
         """Yield human-readable descriptions of the failed ranges."""

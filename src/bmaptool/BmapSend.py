@@ -34,6 +34,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from xml.etree import ElementTree
 
 
@@ -66,17 +67,39 @@ def _parse_destination(destination, image_path):
     return host, path
 
 
-def _load_bmap_image_size(bmap_path):
-    """Read the '<ImageSize>' value from the bmap file."""
+def _load_bmap_info(bmap_path):
+    """
+    Read '<ImageSize>' and '<SourceImageMtime>' from the bmap file. The mtime
+    is 'None' for bmap files created by older bmaptool versions.
+    """
+
+    image_size = None
+    source_mtime = None
+
     try:
         with open(bmap_path, "rb") as bmap_file:
             for _, elem in ElementTree.iterparse(bmap_file, events=("end",)):
                 if elem.tag == "ImageSize":
-                    return int(elem.text)
-    except (OSError, ElementTree.ParseError, TypeError, ValueError) as err:
-        raise Error("cannot read image size from bmap file '%s': %s" % (bmap_path, err))
+                    image_size = int(elem.text)
+                elif elem.tag == "SourceImageMtime":
+                    source_mtime = (elem.text or "").strip()
 
-    raise Error("bmap file '%s' has no 'ImageSize' tag" % bmap_path)
+                elem.clear()
+
+                if image_size is not None and source_mtime is not None:
+                    break
+    except (OSError, ElementTree.ParseError, TypeError, ValueError) as err:
+        raise Error("cannot read bmap file '%s': %s" % (bmap_path, err))
+
+    if image_size is None:
+        raise Error("bmap file '%s' has no 'ImageSize' tag" % bmap_path)
+
+    return image_size, source_mtime
+
+
+def _load_bmap_image_size(bmap_path):
+    """Read the '<ImageSize>' value from the bmap file."""
+    return _load_bmap_info(bmap_path)[0]
 
 
 def _run(command):
@@ -91,6 +114,8 @@ def _run(command):
             "command failed with exit code %d: %s"
             % (err.returncode, " ".join(command))
         )
+    except OSError as err:
+        raise Error("cannot run '%s': %s" % (command[0], err))
 
 
 def _send(args):
@@ -106,7 +131,7 @@ def _send(args):
         )
 
     image_size = os.path.getsize(image)
-    bmap_size = _load_bmap_image_size(bmap)
+    bmap_size, bmap_mtime = _load_bmap_info(bmap)
     if bmap_size != image_size:
         raise Error(
             "bmap file '%s' does not match image '%s': bmap image size is "
@@ -114,10 +139,39 @@ def _send(args):
             % (bmap, image, bmap_size, image_size)
         )
 
+    if bmap_mtime is not None:
+        image_mtime = time.strftime(
+            "%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(image))
+        )
+        if image_mtime != bmap_mtime:
+            print(
+                "warning: bmap source image mtime is '%s', but '%s' has "
+                "mtime '%s'" % (bmap_mtime, image, image_mtime),
+                file=sys.stderr,
+            )
+            if getattr(args, "yes", False):
+                print(
+                    "continuing because --yes was specified",
+                    file=sys.stderr,
+                )
+            else:
+                try:
+                    answer = input("The image may have changed. Continue? [y/N] ")
+                except EOFError:
+                    answer = ""
+                if answer.strip().lower() not in ("y", "yes"):
+                    raise Error("aborted by user")
+    else:
+        print(
+            "warning: bmap has no source image mtime, cannot detect image "
+            "changes",
+            file=sys.stderr,
+        )
+
     host, remote_image = _parse_destination(args.destination, image)
     remote_bmap = remote_image + ".bmap"
 
-    scp = ["scp"]
+    scp = ["scp", "-p"]
     ssh = ["ssh"]
     if args.port is not None:
         scp += ["-P", str(args.port)]
@@ -151,6 +205,12 @@ def main(argv=None):
         help="the remote destination, e.g. 'user@host:/path/to/image.raw'",
     )
     parser.add_argument("-P", "--port", type=int, help="the SSH port to use")
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="continue without prompting when the source image mtime differs",
+    )
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument(

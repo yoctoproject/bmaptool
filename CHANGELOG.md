@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bmap-send` wrapper around `scp`/`ssh` which sends an image and its pre-generated bmap file to a remote host.
 - `-j`/`--jobs` option for `bmaptool create` and `bmaptool verify` (default: `min(4, CPU count)`).
 - `--checksum-type` option for `bmaptool create` (SHA256, SHA512, BLAKE2b) and `bmaptool verify`.
+- `bmaptool verify` now writes `/tmp/source_<image>.sh` and `/tmp/dest_repair_<image>.sh` when ranges fail. The source script builds `<image>_retransfer.bin` from a known-good source image and its checksum; the destination script verifies the size and checksum and writes the ranges back with `dd`.
+- `--source-image` option for `bmaptool verify` to pre-fill the source path in the repair script.
+- `bmaptool create` records the source image mtime in the bmap. `bmap-send` asks `[y/N]` when the mtime changed, and `bmaptool verify` only warns about a different mtime without failing.
+- `bmap-send --yes` to continue without prompting when the source image mtime differs.
+- Verification repair scripts are written atomically and safely, check the source image size, require the transfer checksum by default (`ALLOW_MISSING_HASH=1` overrides), and report when only a subset of failed ranges is included.
+- Man pages updated for `verify`, `-j`, `--checksum-type`, `--source-image`, and the new `bmap-send` command.
 - `.git-blame-ignore-revs` so `git blame` skips the one-time tree-wide reformat.
 - `.github/dependabot.yml` opening weekly grouped pull requests for GitHub Actions and pip.
 - Non-blocking `pip-audit` step in the CI lint job.

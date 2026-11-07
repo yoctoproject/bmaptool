@@ -1,0 +1,80 @@
+.TH BMAP-SEND 1 "2026-11-07" "bmaptool" "User Commands"
+.SH NAME
+bmap-send \- send an image and its bmap file to a remote host
+.SH SYNOPSIS
+.B bmap-send
+[\-P \fIPORT\fR] [\-y] [\-\-verify | \-\-no-verify] \fIIMAGE\fR \fIDESTINATION\fR
+.SH DESCRIPTION
+.PP
+\fIbmap-send\fR transfers a local image file and its bmap file to a remote host
+using \fBscp\fR. The bmap file must be generated beforehand with
+\fIbmaptool create\fR and is expected locally as \fIIMAGE\fR.bmap.
+.PP
+\fIDESTINATION\fR has the form [user@]host:/path/to/image.raw. If the remote
+path ends with "/", it is treated as a directory and the local image name is
+appended. The remote bmap file is stored next to the image as
+/path/to/image.raw.bmap.
+.PP
+The image is transferred first and the bmap file second, so the remote side
+never sees a bmap file that refers to an incomplete image. File timestamps are
+preserved with \fBscp -p\fR.
+.PP
+By default the remote copy is not verified; the transfer only sends the data and
+the bmap file. Use \fB\-\-verify\fR to run \fIbmaptool verify\fR on the remote
+host after the transfer.
+.PP
+If the source image modification time differs from the time recorded in the
+bmap, \fIbmap-send\fR prints a warning and asks
+"Continue? [y/N]". Only "y" or "yes" continues; any other answer or end of
+input aborts the transfer. This catches an image that was modified after its
+bmap was created.
+.SH OPTIONS
+.PP
+\-h, \-\-help
+.RS 2
+Print short help text and exit.
+.RE
+.PP
+\-P, \-\-port \fIPORT\fR
+.RS 2
+Use \fIPORT\fR for the SSH connection.
+.RE
+.PP
+\-y, \-\-yes
+.RS 2
+Continue without prompting when the source image mtime differs from the bmap.
+.RE
+.PP
+\-\-verify
+.RS 2
+Run \fIbmaptool verify\fR on the remote host after the transfer. The remote host
+must have \fIbmaptool\fR installed.
+.RE
+.PP
+\-\-no-verify
+.RS 2
+Do not verify the image on the remote host (default).
+.RE
+.SH EXAMPLES
+.PP
+\fIbmap-send\fR image.raw user@host:/data/image.raw
+.RS 2
+Send image.raw to /data/image.raw and its bmap to /data/image.raw.bmap.
+.RE
+.PP
+\fIbmap-send\fR \-\-verify image.raw user@host:/data/image.raw
+.RS 2
+Send the files and run "\fIbmaptool\fR verify /data/image.raw.bmap" on the
+remote host afterwards.
+.RE
+.PP
+\fIbmap-send\fR \-y image.raw user@host:/data/
+.RS 2
+Send the files into the remote /data/ directory without prompting if the source
+image mtime changed.
+.RE
+.SH EXIT STATUS
+.PP
+0 on success, 1 on error or when the transfer is aborted.
+.SH SEE ALSO
+.BR bmaptool (1)

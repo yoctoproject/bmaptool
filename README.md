@@ -58,9 +58,18 @@ $ bmap-send image.raw user@host:/path/to/image.raw
 By default `bmap-send` only transfers the files and does not verify the remote
 copy. Use `--verify` to run `bmaptool verify` on the remote host afterwards.
 
-You can also refer to the `bmaptool` manual page:
+`bmaptool create` records the source image modification time in the bmap.
+Before transferring, `bmap-send` compares it with the current image mtime and
+asks `[y/N]` if they differ, which catches a source image that was modified
+after the bmap was created. Use `bmap-send --yes` to continue without prompting
+in non-interactive scripts. `bmaptool verify` only prints a warning for a
+different mtime; it never fails because of it, since timestamps can legitimately
+differ between hosts.
+
+You can also refer to the `bmaptool` and `bmap-send` manual pages:
 ```bash
 $ man bmaptool
+$ man bmap-send
 ```
 
 ## Concept
@@ -269,6 +278,21 @@ $ bmaptool verify image.raw.bmap
 The image path is derived by stripping the `.bmap` suffix, so
 `image.raw.bmap` corresponds to `image.raw`. A different image path can be
 passed as the second argument.
+
+When verification fails, `bmaptool verify` prints the failed block ranges and
+writes two repair scripts to `/tmp`:
+
+- `/tmp/source_<image>.sh` — run this on the host which has a known-good source
+  image. Set `SOURCE_IMAGE` at the top of the script; it checks the source
+  image size, creates `<source-image>_retransfer.bin` next to the source image,
+  and writes its checksum to `<source-image>_retransfer.bin.<checksum-type>`.
+- `/tmp/dest_repair_<image>.sh` — transfer the bin file and its checksum to
+  this host, set `BIN` at the top of the script, then run it. It verifies the
+  size and checksum, writes the affected ranges back with `dd`, and prints the
+  final `bmaptool verify` command. If the checksum file is missing, it refuses
+  to repair; set `ALLOW_MISSING_HASH=1` to override.
+
+Use `--source-image` to pre-fill the source path in the source script.
 
 On top of this, the bmap file can be signed using OpenPGP (gpg) and bmaptool
 automatically verifies the signature if it is present. This allows for

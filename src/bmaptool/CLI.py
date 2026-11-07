@@ -817,6 +817,81 @@ def _verify_progress(quiet):
     return callback
 
 
+def _write_script_atomic(path, text):
+    """
+    Write 'text' to 'path' atomically.
+
+    A temporary file plus 'os.replace()' avoids following a pre-existing
+    symlink and avoids leaving a partially written script behind.
+    """
+
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".bmaptool-", suffix=".tmp", dir=os.path.dirname(path)
+    )
+    try:
+        with os.fdopen(fd, "w") as script:
+            script.write(text)
+        os.chmod(tmp_path, 0o755)
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def _write_repair_scripts(verifier, source_image):
+    """
+    Write source and destination repair scripts to the temporary directory and
+    print usage instructions.
+    """
+
+    if not verifier.failures:
+        return
+
+    try:
+        source_script, dest_script, total_size, included, hidden = (
+            verifier.repair_scripts(source_image=source_image)
+        )
+    except BmapVerify.Error as err:
+        log.warning("cannot generate repair scripts: %s", err)
+        return
+
+    basename = re.sub(
+        r"[^A-Za-z0-9._-]", "_", os.path.basename(str(verifier.image_path))
+    )[:40]
+    tmpdir = tempfile.gettempdir()
+    source_path = os.path.join(tmpdir, "source_%s.sh" % basename)
+    dest_path = os.path.join(tmpdir, "dest_repair_%s.sh" % basename)
+
+    try:
+        _write_script_atomic(source_path, source_script)
+        _write_script_atomic(dest_path, dest_script)
+    except OSError as err:
+        log.warning("cannot write repair scripts: %s", err)
+        return
+
+    log.warning("%d failed range(s): repair scripts written:", included)
+    log.warning("  %s (run on the source host)", source_path)
+    log.warning("  %s (run on this host after transferring the bin)", dest_path)
+    log.info(
+        "retransfer size: %s (%d bytes); the source script creates the "
+        "'_retransfer.bin' file and its checksum next to the source image",
+        BmapHelpers.human_size(total_size),
+        total_size,
+    )
+    if hidden:
+        log.warning(
+            "%d additional failed range(s) are not included in the scripts",
+            hidden,
+        )
+    log.info(
+        "after repair, run: bmaptool verify %s",
+        verifier.bmap_path_str(),
+    )
+
+
 def verify_command(args):
     """
     Verify an image file against a bmap file. This is similar to
@@ -841,6 +916,7 @@ def verify_command(args):
         print("%s: FAILED" % verifier.image_path, file=sys.stderr)
         for message in verifier.failure_messages():
             log.error(message)
+        _write_repair_scripts(verifier, args.source_image)
         raise SystemExit(1)
 
     if not args.quiet:
@@ -940,6 +1016,10 @@ def parse_arguments():
     parser_verify.add_argument(
         "--checksum-type", choices=_CHECKSUM_TYPES, default=None, help=text
     )
+
+    # The --source-image option
+    text = "known-good source image path used in the repair script"
+    parser_verify.add_argument("--source-image", help=text)
 
     #
     # Create parser for the "copy" command

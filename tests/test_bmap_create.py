@@ -20,6 +20,7 @@ multi-threaded checksum calculation and checksum type selection.
 import os
 import shutil
 import tempfile
+import time
 import unittest
 from xml.etree import ElementTree
 
@@ -47,6 +48,9 @@ class TestBmapCreate(unittest.TestCase):
         except Filemap.ErrorNotSupp as err:
             shutil.rmtree(cls.tmpdir)
             raise unittest.SkipTest("file mapping is not supported: %s" % err)
+
+        cls.image_mtime = time.time() - 3600
+        os.utime(cls.image, (cls.image_mtime, cls.image_mtime))
 
     @classmethod
     def tearDownClass(cls):
@@ -147,6 +151,18 @@ class TestBmapCreate(unittest.TestCase):
         self.assertEqual(len(ranges), 3)
         for _, _, chksum in ranges:
             self.assertIsNone(chksum)
+
+
+    def test_source_image_mtime(self):
+        """The bmap must record the source image mtime."""
+        path, _ = self._create("mtime.bmap")
+        root, _ = self._parse(path)
+
+        mtime = root.find("SourceImageMtime").text.strip()
+        expected = time.strftime(
+            "%Y-%m-%d %H:%M:%S", time.localtime(self.image_mtime)
+        )
+        self.assertEqual(mtime, expected)
 
 
 if __name__ == "__main__":

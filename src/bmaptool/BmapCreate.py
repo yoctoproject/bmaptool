@@ -50,6 +50,7 @@ This module uses the FIEMAP ioctl to detect holes.
 import hashlib
 import os
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from .BmapHelpers import human_size
@@ -255,6 +256,19 @@ class BmapCreate(object):
 
         self._f_bmap_needs_close = True
 
+    def _get_image_mtime(self):
+        """
+        Return the image modification time in 'YYYY-mm-dd HH:MM:SS' form, or
+        'None' if it cannot be determined.
+        """
+
+        try:
+            stat = os.fstat(self._f_image.fileno())
+        except (AttributeError, OSError, ValueError):
+            return None
+
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime))
+
     def _bmap_file_start(self):
         """
         A helper function which generates the starting contents of the block
@@ -272,6 +286,12 @@ class BmapCreate(object):
             self.block_size,
             self.blocks_cnt,
         )
+
+        image_mtime = self._get_image_mtime()
+        if image_mtime is not None:
+            xml += "    <!-- Source image modification time -->\n"
+            xml += "    <SourceImageMtime> %s </SourceImageMtime>\n\n" % image_mtime
+
         xml += "    <!-- Count of mapped blocks: "
 
         self._f_bmap.write(xml)
