@@ -15,9 +15,9 @@
 # General Public License for more details.
 
 """
-A tool for creating block maps (bmap) and copying disk images using bmap files.
-Documentation can be found here:
-source.tizen.org/documentation/reference/bmaptool
+A tool for creating block maps (bmap), verifying images against them, and
+copying disk images using bmap files.
+Documentation: https://github.com/yoctoproject/bmaptool
 """
 
 # Disable the following pylint recommendations:
