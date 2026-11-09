@@ -70,3 +70,6 @@ ENV/
 
 # local SSH deploy keys (never commit private keys)
 .ssh/
+
+# Built RPMs and their changelog: published manually via GitHub releases
+dists/

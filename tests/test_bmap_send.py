@@ -156,7 +156,7 @@ class TestBmapSend(unittest.TestCase):
         with mock.patch.object(BmapSend, "_run") as run:
             BmapSend._send(self._args())
 
-        calls = [call.args[0] for call in run.call_args_list]
+        calls = [call[0][0] for call in run.call_args_list]
         self.assertEqual(len(calls), 2)
 
         self.assertEqual(calls[0][0], "scp")
@@ -172,7 +172,7 @@ class TestBmapSend(unittest.TestCase):
         with mock.patch.object(BmapSend, "_run") as run:
             BmapSend._send(self._args(verify=True))
 
-        calls = [call.args[0] for call in run.call_args_list]
+        calls = [call[0][0] for call in run.call_args_list]
         self.assertEqual(len(calls), 3)
         self.assertEqual(calls[2][0], "ssh")
         self.assertEqual(calls[2][1], "user@host")
@@ -185,7 +185,7 @@ class TestBmapSend(unittest.TestCase):
         with mock.patch.object(BmapSend, "_run") as run:
             BmapSend._send(self._args(port=2222, verify=True))
 
-        calls = [call.args[0] for call in run.call_args_list]
+        calls = [call[0][0] for call in run.call_args_list]
         self.assertIn("-P", calls[0])
         self.assertIn("2222", calls[0])
         self.assertIn("-p", calls[2])
@@ -196,7 +196,7 @@ class TestBmapSend(unittest.TestCase):
         with mock.patch.object(BmapSend, "_run") as run:
             BmapSend._send(self._args(destination="host:/data/"))
 
-        calls = [call.args[0] for call in run.call_args_list]
+        calls = [call[0][0] for call in run.call_args_list]
         self.assertEqual(calls[0][-1], "host:/data/image.raw")
         self.assertEqual(calls[1][-1], "host:/data/image.raw.bmap")
 

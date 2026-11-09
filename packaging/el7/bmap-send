@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Entry point for the bmap-send command installed by the RPM."""
+
+import sys
+
+sys.path.insert(0, "/usr/lib/bmaptool")
+
+from bmaptool.BmapSend import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())
