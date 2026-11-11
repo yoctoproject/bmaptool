@@ -288,6 +288,23 @@ class TestBmapSend(unittest.TestCase):
         self.assertIn("python3.9 -c", command[2])
         self.assertTrue(command[2].rstrip().endswith("1"))
 
+    def test_send_sparse_connection_error_message(self):
+        """Connection failures must mention ssh, python and the destination."""
+        with mock.patch.object(BmapSend, "_run"), mock.patch.object(
+            BmapSend, "_progress"
+        ), mock.patch(
+            "shutil.which", return_value="/usr/bin/ssh"
+        ), mock.patch(
+            "subprocess.Popen", return_value=_FailingProcess()
+        ):
+            with self.assertRaises(BmapSend.Error) as context:
+                BmapSend._send(self._args(full=False))
+
+        message = str(context.exception)
+        self.assertIn("ssh", message)
+        self.assertIn("destination path", message)
+        self.assertNotIn("needs", message)
+
 
 class _FakeStdin(object):
     """A writable stdin which keeps the bytes for assertions."""
@@ -310,6 +327,29 @@ class _FakeProcess(object):
 
     def wait(self):
         return 0
+
+    def kill(self):
+        pass
+
+
+class _FailingStdin(object):
+    """A stdin which fails like a closed ssh connection."""
+
+    def write(self, data):
+        raise BrokenPipeError("broken pipe")
+
+    def close(self):
+        pass
+
+
+class _FailingProcess(object):
+    """A Popen replacement which fails when the sender starts writing."""
+
+    def __init__(self):
+        self.stdin = _FailingStdin()
+
+    def wait(self):
+        return 1
 
     def kill(self):
         pass

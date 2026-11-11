@@ -415,18 +415,29 @@ def _send_sparse(args):
                     sent += len(chunk)
                     _progress(sent, total)
         process.stdin.close()
-    except (BrokenPipeError, OSError):
-        process.kill()
+    except (BrokenPipeError, OSError) as err:
+        try:
+            process.kill()
+        except OSError:
+            pass
         process.wait()
         raise Error(
-            "remote receiver failed; it needs '%s' on the remote host "
-            "(use --full to fall back to scp)" % args.remote_python
+            "cannot communicate with the remote receiver over ssh: %s. "
+            "Check that ssh works without a password, that '%s' is "
+            "available on the remote host, and that the destination path "
+            "is writable (use --full to fall back to scp)."
+            % (err, args.remote_python)
         )
 
     sys.stderr.write("\n")
     returncode = process.wait()
     if returncode != 0:
-        raise Error("remote receiver failed with exit code %d" % returncode)
+        raise Error(
+            "remote receiver failed with exit code %d. Check ssh "
+            "connectivity, '%s' on the remote host, and the destination "
+            "path (use --full to fall back to scp)."
+            % (returncode, args.remote_python)
+        )
 
     print("sending bmap to %s:%s" % (host, remote_bmap), file=sys.stderr)
     _run(_scp_command(args, ["--", bmap, "%s:%s" % (host, remote_bmap)]))
