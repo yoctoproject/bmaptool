@@ -3,7 +3,7 @@
 .SH NAME
 
 .PP
-bmaptool - create block map (bmap) for a file or copy a file using bmap
+bmaptool - create block map (bmap) for a file, verify it, or copy a file using bmap
 
 .SH SYNOPSIS
 
@@ -20,12 +20,15 @@ system image files, can be copied or flashed a lot faster with \fIbmaptool\fR th
 with traditional tools, like "dd" or "cp".
 
 .PP
-\fIbmaptool\fR supports 2 commands:
+\fIbmaptool\fR supports 3 commands:
 .RS 2
 1. \fBcopy\fR - copy a file to another file using bmap or flash an image to a block device
 .RE
 .RS 2
 2. \fBcreate\fR - create a bmap for a file
+.RE
+.RS 2
+3. \fBverify\fR - verify an image file against a bmap file
 .RE
 
 .PP
@@ -307,7 +310,7 @@ file is being generated, and after the bmap file has been generated. Otherwise
 the bmap file becomes invalid and checksum verification will fail.
 
 .PP
-The image file can further be signed using OpenPGP.
+The bmap file can further be signed using OpenPGP.
 
 .\"
 .\" The "create" command's options
@@ -330,7 +333,20 @@ stdout).
 .PP
 \-\-no-checksum
 .RS 2
-Generate a bmap file without SHA1 checksums (not recommended).
+Generate a bmap file without checksums (not recommended).
+.RE
+
+.PP
+\-j, \-\-jobs JOBS
+.RS 2
+Use JOBS threads for checksum calculation (default: min(4, CPU count)).
+.RE
+
+.PP
+\-\-checksum-type TYPE
+.RS 2
+Use TYPE ("sha256", "sha512", or "blake2b") for checksums (default:
+"sha256").
 .RE
 .RE
 .RE
@@ -351,6 +367,65 @@ Generate bmap for the "image.raw" file and print it to stdout.
 \fIbmaptool\fR create -o image.bmap image.raw
 .RS 2
 Generate bmap for the "image.raw" file and save it in "image.bmap".
+.RE
+.RE
+
+.\"
+.\" The "verify" command description
+.\"
+.SS \fBverify\fR [options] BMAP [IMAGE]
+
+.PP
+Verify the mapped block ranges of IMAGE against the checksums stored in BMAP.
+The BMAP file itself is verified as well. IMAGE defaults to BMAP with the
+".bmap" suffix removed. The command exits with status 0 when all checksums
+match and status 1 otherwise.
+
+.PP
+When a block range fails, two repair scripts are written to the temporary
+directory: "source_<image>.sh" and "dest_repair_<image>.sh". The source script
+extracts the failed ranges from a known-good source image; the destination
+script verifies the transferred file and writes the ranges back with "dd".
+
+.PP
+If the image modification time differs from the one recorded in the bmap, a
+warning is printed and verification continues. This check is informational only,
+because timestamps can differ between hosts.
+
+.RS 2
+\fBOPTIONS\fR
+.RS 2
+\-h, \-\-help
+.RS 2
+Print short help text about the "verify" command and exit.
+.RE
+
+.PP
+\-j, \-\-jobs JOBS
+.RS 2
+Use JOBS threads for verification (default: min(4, CPU count)).
+.RE
+
+.PP
+\-\-checksum-type TYPE
+.RS 2
+Require the bmap file to use TYPE ("sha256", "sha512", or "blake2b").
+.RE
+
+.PP
+\-\-source-image IMAGE
+.RS 2
+Pre-fill the source image path in the generated repair script.
+.RE
+.RE
+.RE
+
+.RS 2
+\fBEXAMPLES\fR
+.RS 2
+\fIbmaptool\fR verify image.raw.bmap
+.RS 2
+Verify "image.raw" using "image.raw.bmap".
 .RE
 .RE
 

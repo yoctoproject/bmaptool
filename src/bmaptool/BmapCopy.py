@@ -878,10 +878,8 @@ class BmapBdevCopy(BmapCopy):
         #    This was observed e.g. in Fedora 17.
         # The old settings are saved and restored by the context managers.
 
-        with (
-            SysfsChange(self._sysfs_max_ratio_path, "1") as max_ratio_chg,
-            SysfsChange(self._sysfs_scheduler_path, "none") as scheduler_chg,
-        ):
+        with SysfsChange(self._sysfs_max_ratio_path, "1") as max_ratio_chg, \
+                SysfsChange(self._sysfs_scheduler_path, "none") as scheduler_chg:
             if max_ratio_chg.error:
                 _log.warning(
                     "failed to disable excessive buffering, expect "

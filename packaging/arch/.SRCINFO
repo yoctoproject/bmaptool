@@ -1,0 +1,11 @@
+pkgbase = bmaptool
+	pkgdesc = Tools for creating and using block maps (bmap)
+	pkgver = 3.9.0
+	pkgrel = 2
+	url = https://github.com/yoctoproject/bmaptool
+	arch = any
+	license = GPL-2.0-only
+	depends = python
+	options = !strip
+
+pkgname = bmaptool

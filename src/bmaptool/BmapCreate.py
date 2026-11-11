@@ -48,6 +48,11 @@ This module uses the FIEMAP ioctl to detect holes.
 # pylint: disable=R0902,R0903
 
 import hashlib
+import os
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 from .BmapHelpers import human_size
 from . import Filemap
 
@@ -64,6 +69,31 @@ from . import Filemap
 #   version number. Unfortunately, the mistake slipped into bmaptool version
 #   3.0, and was only fixed in bmaptool v3.1.
 SUPPORTED_BMAP_VERSION = "2.0"
+
+# Mapped ranges at least this large are split into smaller ranges, so that
+# their checksums can be calculated in parallel. This also makes the resulting
+# bmap file more granular, which lets 'bmaptool verify' parallelize the
+# verification. Ranges smaller than this are kept intact.
+SPLIT_THRESHOLD = 64 * 1024 * 1024
+# Size of the sub-ranges which large mapped ranges are split into.
+SPLIT_SIZE = 32 * 1024 * 1024
+# Amount of data read from the image file at once when calculating a checksum.
+READ_CHUNK_SIZE = 8 * 1024 * 1024
+
+
+def default_jobs():
+    """Return the default number of checksum calculation threads."""
+    return min(4, os.cpu_count() or 1)
+
+
+def _normalize_jobs(jobs):
+    """Validate and normalize the 'jobs' argument."""
+    if jobs is None:
+        return default_jobs()
+    if jobs < 1:
+        raise Error("number of jobs must be at least 1, got %d" % jobs)
+    return jobs
+
 
 _BMAP_START_TEMPLATE = """<?xml version="1.0" ?>
 <!-- This file contains the block map for an image file, which is basically
@@ -124,7 +154,7 @@ class BmapCreate(object):
     the FIEMAP ioctl to generate the bmap.
     """
 
-    def __init__(self, image, bmap, chksum_type="sha256"):
+    def __init__(self, image, bmap, chksum_type="sha256", jobs=None):
         """
         Initialize a class instance:
         * image  - full path or a file-like object of the image to create bmap
@@ -133,6 +163,8 @@ class BmapCreate(object):
                    bmap to
         * chksum - type of the check sum to use in the bmap file (all checksum
                    types which python's "hashlib" module supports are allowed).
+        * jobs   - number of threads to use for checksum calculation (defaults
+                   to min(4, CPU count))
         """
 
         self.image_size = None
@@ -151,6 +183,10 @@ class BmapCreate(object):
         self._f_image_needs_close = False
         self._f_bmap_needs_close = False
 
+        self._jobs = _normalize_jobs(jobs)
+        self._image_lock = threading.Lock()
+        self._image_fd = None
+
         self._cs_type = chksum_type.lower()
         try:
             self._cs_len = len(hashlib.new(self._cs_type).hexdigest())
@@ -165,6 +201,11 @@ class BmapCreate(object):
         else:
             self._image_path = image
             self._open_image_file()
+
+        try:
+            self._image_fd = self._f_image.fileno()
+        except (AttributeError, OSError, ValueError):
+            self._image_fd = None
 
         if hasattr(bmap, "read"):
             self._f_bmap = bmap
@@ -192,9 +233,9 @@ class BmapCreate(object):
 
     def __del__(self):
         """The class destructor which closes the opened files."""
-        if self._f_image_needs_close:
+        if getattr(self, "_f_image_needs_close", False):
             self._f_image.close()
-        if self._f_bmap_needs_close:
+        if getattr(self, "_f_bmap_needs_close", False):
             self._f_bmap.close()
 
     def _open_image_file(self):
@@ -215,6 +256,19 @@ class BmapCreate(object):
 
         self._f_bmap_needs_close = True
 
+    def _get_image_mtime(self):
+        """
+        Return the image modification time in 'YYYY-mm-dd HH:MM:SS' form, or
+        'None' if it cannot be determined.
+        """
+
+        try:
+            stat = os.fstat(self._f_image.fileno())
+        except (AttributeError, OSError, ValueError):
+            return None
+
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime))
+
     def _bmap_file_start(self):
         """
         A helper function which generates the starting contents of the block
@@ -232,6 +286,12 @@ class BmapCreate(object):
             self.block_size,
             self.blocks_cnt,
         )
+
+        image_mtime = self._get_image_mtime()
+        if image_mtime is not None:
+            xml += "    <!-- Source image modification time -->\n"
+            xml += "    <SourceImageMtime> %s </SourceImageMtime>\n\n" % image_mtime
+
         xml += "    <!-- Count of mapped blocks: "
 
         self._f_bmap.write(xml)
@@ -297,30 +357,98 @@ class BmapCreate(object):
         self._f_bmap.seek(self._chksum_pos)
         self._f_bmap.write("%s" % chksum)
 
+    def _read(self, size, offset):
+        """
+        Read up to 'size' bytes at 'offset' from the image file. 'pread()' is
+        used when the image has a file descriptor, so that several threads can
+        read the file concurrently without racing on the shared file position.
+        """
+
+        if self._image_fd is not None:
+            return os.pread(self._image_fd, size, offset)
+
+        with self._image_lock:
+            self._f_image.seek(offset)
+            return self._f_image.read(size)
+
+    def _calculate_chksum_range(self, start, end):
+        """
+        A helper function which calculates checksum for the [start, end) byte
+        range of the image file.
+        """
+
+        hash_obj = hashlib.new(self._cs_type)
+        pos = start
+        while pos < end:
+            chunk = self._read(min(READ_CHUNK_SIZE, end - pos), pos)
+            if not chunk:
+                raise Error(
+                    "unexpected end of image file '%s' at offset %d"
+                    % (self._image_path, pos)
+                )
+            hash_obj.update(chunk)
+            pos += len(chunk)
+
+        return hash_obj.hexdigest()
+
     def _calculate_chksum(self, first, last):
         """
         A helper function which calculates checksum for the range of blocks of
         the image file: from block 'first' to block 'last'.
         """
 
-        start = first * self.block_size
-        end = (last + 1) * self.block_size
+        return self._calculate_chksum_range(
+            first * self.block_size,
+            min((last + 1) * self.block_size, self.image_size),
+        )
 
-        self._f_image.seek(start)
-        hash_obj = hashlib.new(self._cs_type)
+    def _split_range(self, first, last):
+        """
+        Split a mapped block range into smaller ranges if it is at least
+        'SPLIT_THRESHOLD' bytes long. Smaller ranges are returned intact.
+        """
 
-        chunk_size = 1024 * 1024
-        to_read = end - start
-        read = 0
+        size = (last - first + 1) * self.block_size
+        if size < SPLIT_THRESHOLD:
+            return [(first, last)]
 
-        while read < to_read:
-            if read + chunk_size > to_read:
-                chunk_size = to_read - read
-            chunk = self._f_image.read(chunk_size)
-            hash_obj.update(chunk)
-            read += chunk_size
+        blocks = max(1, SPLIT_SIZE // self.block_size)
+        result = []
+        pos = first
+        while pos <= last:
+            end = min(pos + blocks - 1, last)
+            result.append((pos, end))
+            pos = end + 1
 
-        return hash_obj.hexdigest()
+        return result
+
+    def _iter_checksums(self, ranges, include_checksums):
+        """
+        Yield checksums for the block ranges in 'ranges', preserving the order
+        of the ranges. Checksums are calculated in parallel when more than one
+        job is configured.
+        """
+
+        if not include_checksums:
+            for _ in ranges:
+                yield None
+            return
+
+        if self._jobs == 1 or len(ranges) < 2:
+            for first, last in ranges:
+                yield self._calculate_chksum(first, last)
+            return
+
+        with ThreadPoolExecutor(max_workers=self._jobs) as executor:
+            # Submit in bounded batches, so that a huge image does not create
+            # millions of pending futures at once.
+            batch_size = max(self._jobs * 4, 1)
+            for index in range(0, len(ranges), batch_size):
+                batch = ranges[index : index + batch_size]
+                for chksum in executor.map(
+                    lambda item: self._calculate_chksum(item[0], item[1]), batch
+                ):
+                    yield chksum
 
     def generate(self, include_checksums=True):
         """
@@ -333,13 +461,20 @@ class BmapCreate(object):
 
         self._bmap_file_start()
 
-        # Generate the block map and write it to the XML block map
-        # file as we go.
-        self.mapped_cnt = 0
+        # Split large mapped ranges, so that their checksums can be calculated
+        # in parallel and the resulting bmap is more granular.
+        ranges = []
         for first, last in self.filemap.get_mapped_ranges(0, self.blocks_cnt):
-            self.mapped_cnt += last - first + 1
-            if include_checksums:
-                chksum = self._calculate_chksum(first, last)
+            ranges.extend(self._split_range(first, last))
+
+        self.mapped_cnt = sum(last - first + 1 for first, last in ranges)
+
+        # Generate the block map and write it to the XML block map file as we
+        # go.
+        for (first, last), chksum in zip(
+            ranges, self._iter_checksums(ranges, include_checksums)
+        ):
+            if chksum is not None:
                 chksum = ' chksum="%s"' % chksum
             else:
                 chksum = ""

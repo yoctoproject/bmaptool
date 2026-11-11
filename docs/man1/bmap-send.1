@@ -1,0 +1,123 @@
+.TH BMAP-SEND 1 "2026-11-11" "bmaptool" "User Commands"
+.SH NAME
+bmap-send \- send only the mapped blocks of an image to a remote host
+.SH SYNOPSIS
+.B bmap-send
+[\-P \fIPORT\fR] [\-y] [\-\-full] [\-\-zero-holes]
+[\-\-remote-python \fIPYTHON\fR]
+[\-\-verify | \-\-no-verify] \fIIMAGE\fR \fIDESTINATION\fR
+.SH DESCRIPTION
+.PP
+\fIbmap-send\fR sends an image and its bmap file to a remote host. By default it
+reads the mapped block ranges from the bmap file and transfers only their data
+over SSH, so holes in a sparse image are never sent. The remote side runs a
+small Python 3 program which writes every range at its original offset.
+.PP
+The bmap file must be generated beforehand with \fIbmaptool create\fR. Locally
+it is expected as \fIIMAGE\fR.bmap. On the remote side it is stored next to the
+image as \fIDESTINATION\fR.bmap, so that it can be verified there with
+\fIbmaptool verify\fR.
+.PP
+\fIDESTINATION\fR has the form [user@]host:/path/to/image.raw. If the remote
+path ends with "/", it is treated as a directory and the local image name is
+appended. The remote bmap file is stored next to the image as
+/path/to/image.raw.bmap.
+.PP
+The remote side needs a Python 3 interpreter to run the receiver. The default is
+\fBpython3\fR; use \fB\-\-remote-python\fR to select another interpreter. Use
+\fB\-\-full\fR to fall back to the old behaviour of sending the whole image with
+\fBscp\fR, in which case no remote Python is needed.
+.PP
+When the destination is a block device, the holes keep whatever data the device
+already contains. Use \fB\-\-zero-holes\fR to write zeroes to the holes; the
+zeroes are generated on the remote side and are not transferred over the
+network. Regular files are truncated to the image size, so their holes read
+back as zero without this option.
+.PP
+By default the remote copy is not verified. Use \fB\-\-verify\fR to run
+\fIbmaptool verify\fR on the remote host after the transfer. The remote host
+must have \fIbmaptool\fR installed for this option.
+.PP
+If the source image modification time differs from the time recorded in the
+bmap, \fIbmap-send\fR prints a warning and asks "Continue? [y/N]". Only "y" or
+"yes" continues; any other answer or end of input aborts the transfer. This
+catches an image that was modified after its bmap was created.
+.SH OPTIONS
+.PP
+\-h, \-\-help
+.RS 2
+Print short help text and exit.
+.RE
+.PP
+\-P, \-\-port \fIPORT\fR
+.RS 2
+Use \fIPORT\fR for the SSH connection.
+.RE
+.PP
+\-y, \-\-yes
+.RS 2
+Continue without prompting when the source image mtime differs from the bmap.
+.RE
+.PP
+\-\-full
+.RS 2
+Send the whole image with \fBscp\fR instead of only the mapped ranges. This is
+the behaviour of older \fIbmap-send\fR versions and is useful when the remote
+side cannot run the Python receiver.
+.RE
+.PP
+\-\-zero-holes
+.RS 2
+When the destination is a block device, write zeroes to the holes. The zeroes
+are generated on the remote side; only the mapped ranges are transferred.
+.RE
+.PP
+\-\-remote-python \fIPYTHON\fR
+.RS 2
+Python 3 interpreter used on the remote side (default: \fBpython3\fR).
+.RE
+.PP
+\-\-verify
+.RS 2
+Run \fIbmaptool verify\fR on the remote host after the transfer. The remote host
+must have \fIbmaptool\fR installed.
+.RE
+.PP
+\-\-no-verify
+.RS 2
+Do not verify the image on the remote host (default).
+.RE
+.SH EXAMPLES
+.PP
+\fIbmap-send\fR image.raw user@host:/data/image.raw
+.RS 2
+Send the mapped ranges of image.raw to /data/image.raw and its bmap to
+/data/image.raw.bmap.
+.RE
+.PP
+\fIbmap-send\fR \-\-full image.raw user@host:/data/image.raw
+.RS 2
+Send the complete image with scp.
+.RE
+.PP
+\fIbmap-send\fR \-\-zero-holes image.raw root@host:/dev/sdX
+.RS 2
+Write the mapped ranges to a block device and zero its holes remotely.
+.RE
+.PP
+\fIbmap-send\fR \-\-verify image.raw user@host:/data/image.raw
+.RS 2
+Send the mapped ranges and run "\fIbmaptool\fR verify /data/image.raw.bmap" on
+the remote host afterwards.
+.RE
+.PP
+\fIbmap-send\fR \-P 2222 \-y image.raw user@host:/data/
+.RS 2
+Send the mapped ranges into the remote /data/ directory using port 2222 and
+without prompting if the source image mtime changed.
+.RE
+.SH EXIT STATUS
+.PP
+0 on success, 1 on error or when the transfer is aborted.
+.SH SEE ALSO
+.BR bmaptool (1)

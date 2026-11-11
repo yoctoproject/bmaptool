@@ -1,0 +1,10 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""Entry point for the bmap-send command installed by this package."""
+
+import sys
+
+from bmaptool.BmapSend import main
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -31,10 +31,11 @@ brought a number of advantages.
 
 ## Usage
 
-`bmaptool` supports 2 subcommands:
+`bmaptool` supports 3 subcommands:
 * `copy` - copy a file to another file using bmap or flash an image to a block
   device
 * `create` - create a bmap for a file
+* `verify` - verify an image file against its bmap file
 
 You can get usage reference for `bmaptool` and all the supported command using
 the `-h` or `--help` options:
@@ -44,9 +45,40 @@ $ bmaptool -h # General bmaptool help
 $ bmaptool <cmd> -h # Help on the <cmd> sub-command
 ```
 
-You can also refer to the `bmaptool` manual page:
+`bmap-send` sends an image together with its bmap file to a remote host. By
+default it reads the block ranges listed in the bmap and transfers only those
+ranges, so holes in a sparse image are never sent. The bmap file must be
+generated first; locally it is expected to be `<image>.bmap`, and remotely it is
+stored next to the image as `<image>.bmap`:
+
+```bash
+$ bmaptool create image.raw
+$ bmap-send image.raw user@host:/path/to/image.raw
+```
+
+The remote side needs Python 3 (`python3` by default; use `--remote-python` to
+select another interpreter) because it runs a small receiver program. Use
+`--full` to fall back to the old behaviour of sending the whole image with
+`scp`. When the destination is a block device, the holes keep whatever data the
+device already contained; add `--zero-holes` to write zeroes to the holes
+(they are generated on the remote side and are not transferred).
+
+By default `bmap-send` does not verify the remote copy. Use `--verify` to run
+`bmaptool verify` on the remote host afterwards; this requires `bmaptool` to be
+installed there.
+
+`bmaptool create` records the source image modification time in the bmap.
+Before transferring, `bmap-send` compares it with the current image mtime and
+asks `[y/N]` if they differ, which catches a source image that was modified
+after the bmap was created. Use `bmap-send --yes` to continue without prompting
+in non-interactive scripts. `bmaptool verify` only prints a warning for a
+different mtime; it never fails because of it, since timestamps can legitimately
+differ between hosts.
+
+You can also refer to the `bmaptool` and `bmap-send` manual pages:
 ```bash
 $ man bmaptool
+$ man bmap-send
 ```
 
 ## Concept
@@ -237,10 +269,39 @@ very quickly with `bmaptool` and the bmap file, because `bmaptool` will decompre
 the image on-the-fly and write only mapped areas.
 
 The additional benefit of using bmap for flashing is the checksum verification.
-Indeed, the `bmaptool create` command generates SHA256 checksums for all mapped
-block ranges, and the `bmaptool copy` command verifies the checksums while
-writing. Integrity of the bmap file itself is also protected by a SHA256
+Indeed, the `bmaptool create` command generates checksums for all mapped block
+ranges, and the `bmaptool copy` command verifies the checksums while writing.
+The default checksum algorithm is SHA256; SHA512 and BLAKE2b can be selected
+with `--checksum-type`. Integrity of the bmap file itself is also protected by a
 checksum and `bmaptool` verifies it before starting flashing.
+
+Large mapped ranges (at least 64 MiB) are split into 32 MiB ranges, so that
+checksums can be calculated in parallel. Use `-j`/`--jobs` to control the
+number of threads (the default is `min(4, CPU count)`). The same splitting
+makes it possible to verify an image in parallel with:
+
+```bash
+$ bmaptool verify image.raw.bmap
+```
+
+The image path is derived by stripping the `.bmap` suffix, so
+`image.raw.bmap` corresponds to `image.raw`. A different image path can be
+passed as the second argument.
+
+When verification fails, `bmaptool verify` prints the failed block ranges and
+writes two repair scripts to `/tmp`:
+
+- `/tmp/source_<image>.sh` — run this on the host which has a known-good source
+  image. Set `SOURCE_IMAGE` at the top of the script; it checks the source
+  image size, creates `<source-image>_retransfer.bin` next to the source image,
+  and writes its checksum to `<source-image>_retransfer.bin.<checksum-type>`.
+- `/tmp/dest_repair_<image>.sh` — transfer the bin file and its checksum to
+  this host, set `BIN` at the top of the script, then run it. It verifies the
+  size and checksum, writes the affected ranges back with `dd`, and prints the
+  final `bmaptool verify` command. If the checksum file is missing, it refuses
+  to repair; set `ALLOW_MISSING_HASH=1` to override.
+
+Use `--source-image` to pre-fill the source path in the source script.
 
 On top of this, the bmap file can be signed using OpenPGP (gpg) and bmaptool
 automatically verifies the signature if it is present. This allows for

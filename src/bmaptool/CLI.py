@@ -15,9 +15,9 @@
 # General Public License for more details.
 
 """
-A tool for creating block maps (bmap) and copying disk images using bmap files.
-Documentation can be found here:
-source.tizen.org/documentation/reference/bmaptool
+A tool for creating block maps (bmap), verifying images against them, and
+copying disk images using bmap files.
+Documentation: https://github.com/yoctoproject/bmaptool
 """
 
 # Disable the following pylint recommendations:
@@ -43,7 +43,7 @@ import subprocess
 import re
 import urllib.parse
 from typing import NamedTuple
-from . import BmapCreate, BmapCopy, BmapHelpers, TransRead
+from . import BmapCreate, BmapCopy, BmapHelpers, BmapVerify, TransRead
 
 from . import __version__ as VERSION
 
@@ -750,7 +750,9 @@ def create_command(args):
             error_out("cannot create a temporary file:\n%s", err)
 
     try:
-        creator = BmapCreate.BmapCreate(args.image, output, "sha256")
+        creator = BmapCreate.BmapCreate(
+            args.image, output, args.checksum_type, jobs=args.jobs
+        )
         creator.generate(not args.no_checksum)
     except BmapCreate.Error as err:
         error_out(err)
@@ -765,6 +767,167 @@ def create_command(args):
             % (creator.image_size_human, args.image)
         )
         log.warning("was the image handled incorrectly and holes were expanded?")
+
+
+_CHECKSUM_TYPES = ("sha256", "sha512", "blake2b")
+
+
+def _positive_int(value):
+    """An argparse type for a positive integer."""
+    try:
+        result = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("'%s' is not an integer" % value)
+
+    if result < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+
+    return result
+
+
+def _verify_progress(quiet):
+    """
+    Return a progress callback for 'bmaptool verify', or 'None' when progress
+    reporting is not needed.
+    """
+
+    if quiet or not sys.stderr.isatty():
+        return None
+
+    state = {"percent": -1}
+
+    def callback(done, total):
+        percent = int(done * 100 / total) if total else 100
+        if percent == state["percent"]:
+            return
+
+        state["percent"] = percent
+        sys.stderr.write(
+            "\rVerifying: %3d%% (%s / %s)"
+            % (
+                percent,
+                BmapHelpers.human_size(done),
+                BmapHelpers.human_size(total),
+            )
+        )
+        sys.stderr.flush()
+        if percent == 100:
+            sys.stderr.write("\n")
+
+    return callback
+
+
+def _write_script_atomic(path, text):
+    """
+    Write 'text' to 'path' atomically.
+
+    A temporary file plus 'os.replace()' avoids following a pre-existing
+    symlink and avoids leaving a partially written script behind.
+    """
+
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".bmaptool-", suffix=".tmp", dir=os.path.dirname(path)
+    )
+    try:
+        with os.fdopen(fd, "w") as script:
+            script.write(text)
+        os.chmod(tmp_path, 0o755)
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def _write_repair_scripts(verifier, source_image):
+    """
+    Write source and destination repair scripts to the temporary directory and
+    print usage instructions.
+    """
+
+    if not verifier.failures:
+        return
+
+    try:
+        source_script, dest_script, total_size, included, hidden = (
+            verifier.repair_scripts(source_image=source_image)
+        )
+    except BmapVerify.Error as err:
+        log.warning("cannot generate repair scripts: %s", err)
+        return
+
+    basename = re.sub(
+        r"[^A-Za-z0-9._-]", "_", os.path.basename(str(verifier.image_path))
+    )[:40]
+    tmpdir = tempfile.gettempdir()
+    source_path = os.path.join(tmpdir, "source_%s.sh" % basename)
+    dest_path = os.path.join(tmpdir, "dest_repair_%s.sh" % basename)
+
+    try:
+        _write_script_atomic(source_path, source_script)
+        _write_script_atomic(dest_path, dest_script)
+    except OSError as err:
+        log.warning("cannot write repair scripts: %s", err)
+        return
+
+    log.warning("%d failed range(s): repair scripts written:", included)
+    log.warning("  %s (run on the source host)", source_path)
+    log.warning("  %s (run on this host after transferring the bin)", dest_path)
+    log.info(
+        "retransfer size: %s (%d bytes); the source script creates the "
+        "'_retransfer.bin' file and its checksum next to the source image",
+        BmapHelpers.human_size(total_size),
+        total_size,
+    )
+    if hidden:
+        log.warning(
+            "%d additional failed range(s) are not included in the scripts",
+            hidden,
+        )
+    log.info(
+        "after repair, run: bmaptool verify %s",
+        verifier.bmap_path_str(),
+    )
+
+
+def verify_command(args):
+    """
+    Verify an image file against a bmap file. This is similar to
+    'sha256sum --check': the checksums are read from the bmap file and the
+    mapped block ranges of the image are verified against them.
+    """
+
+    try:
+        verifier = BmapVerify.BmapVerify(
+            args.bmap,
+            args.image,
+            jobs=args.jobs,
+            chksum_type=args.checksum_type,
+        )
+        ok = verifier.verify(progress=_verify_progress(args.quiet))
+    except BmapVerify.Error as err:
+        print("%s: FAILED" % (args.image or args.bmap), file=sys.stderr)
+        log.error(err)
+        raise SystemExit(1)
+
+    if not ok:
+        print("%s: FAILED" % verifier.image_path, file=sys.stderr)
+        for message in verifier.failure_messages():
+            log.error(message)
+        _write_repair_scripts(verifier, args.source_image)
+        raise SystemExit(1)
+
+    if not args.quiet:
+        print(
+            "%s: OK (%d range(s), %s verified)"
+            % (
+                verifier.image_path,
+                verifier.verified_ranges,
+                BmapHelpers.human_size(verifier.verified_bytes),
+            )
+        )
 
 
 def parse_arguments():
@@ -806,6 +969,57 @@ def parse_arguments():
     # The --no-checksum option
     text = "do not generate the checksum for block ranges in the bmap"
     parser_create.add_argument("--no-checksum", action="store_true", help=text)
+
+    # The --jobs option
+    text = (
+        "number of threads used to calculate checksums "
+        "(default: min(4, CPU count))"
+    )
+    parser_create.add_argument("-j", "--jobs", type=_positive_int, help=text)
+
+    # The --checksum-type option
+    text = "checksum algorithm to use (default: sha256)"
+    parser_create.add_argument(
+        "--checksum-type", choices=_CHECKSUM_TYPES, default="sha256", help=text
+    )
+
+    #
+    # Create parser for the "verify" command
+    #
+    text = "verify an image file against a bmap file (like 'sha256sum --check')"
+    parser_verify = subparsers.add_parser("verify", help=text)
+    parser_verify.set_defaults(func=verify_command)
+
+    # The first positional argument - bmap file
+    text = "the bmap file to verify"
+    parser_verify.add_argument("bmap", help=text)
+
+    # The second positional argument - image file
+    text = (
+        "the image file to verify (default: the bmap file name without the "
+        "'.bmap' suffix)"
+    )
+    parser_verify.add_argument("image", nargs="?", help=text)
+
+    # The --jobs option
+    text = (
+        "number of threads used to verify checksums "
+        "(default: min(4, CPU count))"
+    )
+    parser_verify.add_argument("-j", "--jobs", type=_positive_int, help=text)
+
+    # The --checksum-type option
+    text = (
+        "require the bmap file to use this checksum algorithm "
+        "(default: use the algorithm from the bmap file)"
+    )
+    parser_verify.add_argument(
+        "--checksum-type", choices=_CHECKSUM_TYPES, default=None, help=text
+    )
+
+    # The --source-image option
+    text = "known-good source image path used in the repair script"
+    parser_verify.add_argument("--source-image", help=text)
 
     #
     # Create parser for the "copy" command

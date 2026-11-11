@@ -1,0 +1,31 @@
+# Maintainer: bmaptool local build
+pkgname=bmaptool
+pkgver=3.9.0
+pkgrel=2
+pkgdesc="Tools for creating and using block maps (bmap)"
+arch=('any')
+url="https://github.com/yoctoproject/bmaptool"
+license=('GPL-2.0-only')
+depends=('python')
+options=('!strip')
+source=()
+sha256sums=()
+
+package() {
+    cd "$startdir/../.."
+
+    local pysite
+    pysite=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+
+    install -d "$pkgdir$pysite/bmaptool"
+    install -m644 src/bmaptool/*.py "$pkgdir$pysite/bmaptool/"
+
+    install -Dm755 packaging/arch/bmaptool "$pkgdir/usr/bin/bmaptool"
+    install -Dm755 packaging/arch/bmap-send "$pkgdir/usr/bin/bmap-send"
+
+    install -Dm644 docs/man1/bmaptool.1 "$pkgdir/usr/share/man/man1/bmaptool.1"
+    install -Dm644 docs/man1/bmap-send.1 "$pkgdir/usr/share/man/man1/bmap-send.1"
+
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/bmaptool/LICENSE"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/bmaptool/README.md"
+}
