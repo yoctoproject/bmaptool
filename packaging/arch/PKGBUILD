@@ -1,7 +1,7 @@
 # Maintainer: bmaptool local build
 pkgname=bmaptool
 pkgver=3.9.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Tools for creating and using block maps (bmap)"
 arch=('any')
 url="https://github.com/yoctoproject/bmaptool"

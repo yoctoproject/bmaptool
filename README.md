@@ -45,18 +45,27 @@ $ bmaptool -h # General bmaptool help
 $ bmaptool <cmd> -h # Help on the <cmd> sub-command
 ```
 
-`bmap-send` is a separate wrapper around `scp` and `ssh` which sends an image
-together with its bmap file to a remote host. The bmap file must be generated
-first; locally it is expected to be `<image>.bmap`, and remotely it is stored
-next to the image as `<image>.bmap`:
+`bmap-send` sends an image together with its bmap file to a remote host. By
+default it reads the block ranges listed in the bmap and transfers only those
+ranges, so holes in a sparse image are never sent. The bmap file must be
+generated first; locally it is expected to be `<image>.bmap`, and remotely it is
+stored next to the image as `<image>.bmap`:
 
 ```bash
 $ bmaptool create image.raw
 $ bmap-send image.raw user@host:/path/to/image.raw
 ```
 
-By default `bmap-send` only transfers the files and does not verify the remote
-copy. Use `--verify` to run `bmaptool verify` on the remote host afterwards.
+The remote side needs Python 3 (`python3` by default; use `--remote-python` to
+select another interpreter) because it runs a small receiver program. Use
+`--full` to fall back to the old behaviour of sending the whole image with
+`scp`. When the destination is a block device, the holes keep whatever data the
+device already contained; add `--zero-holes` to write zeroes to the holes
+(they are generated on the remote side and are not transferred).
+
+By default `bmap-send` does not verify the remote copy. Use `--verify` to run
+`bmaptool verify` on the remote host afterwards; this requires `bmaptool` to be
+installed there.
 
 `bmaptool create` records the source image modification time in the bmap.
 Before transferring, `bmap-send` compares it with the current image mtime and

@@ -1,6 +1,6 @@
 Name:           bmaptool
 Version:        3.9.0
-Release:        9.el7
+Release:        11.el7
 Summary:        Tools for creating and using block maps (bmap)
 License:        GPLv2
 URL:            https://github.com/yoctoproject/bmaptool
@@ -65,6 +65,11 @@ fi
 %{_mandir}/man1/bmap-send.1*
 
 %changelog
+* Wed Nov 11 2026 bmaptool packager <nobody@example.com> - 3.9.0-11
+- bmap-send: send only the mapped ranges by default; add --full,
+  --zero-holes and --remote-python
+- Update the bmap-send man page and README
+
 * Mon Nov 09 2026 bmaptool packager <nobody@example.com> - 3.9.0-9
 - Move the RPM packaging files under packaging/el7/ (no functional change)
 - Keep the built RPMs and their changelog under packaging/el7/rpms/

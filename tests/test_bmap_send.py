@@ -17,6 +17,7 @@
 import argparse
 import os
 import shutil
+import struct
 import tempfile
 import time
 import unittest
@@ -54,7 +55,11 @@ class TestBmapSend(unittest.TestCase):
                 '<?xml version="1.0" ?>\n'
                 '<bmap version="2.0">\n'
                 "  <ImageSize> %d </ImageSize>\n"
+                "  <BlockSize> 4096 </BlockSize>\n"
                 "%s"
+                "  <BlockMap>\n"
+                "    <Range> 0-2047 </Range>\n"
+                "  </BlockMap>\n"
                 "</bmap>\n" % (IMAGE_SIZE, extra)
             )
 
@@ -68,6 +73,11 @@ class TestBmapSend(unittest.TestCase):
             "port": None,
             "verify": False,
             "yes": False,
+            # The scp-based tests use the full mode explicitly; the sparse
+            # tests pass full=False.
+            "full": True,
+            "zero_holes": False,
+            "remote_python": "python3",
         }
         values.update(kwargs)
         return argparse.Namespace(**values)
@@ -223,6 +233,86 @@ class TestBmapSend(unittest.TestCase):
 
         with self.assertRaises(BmapSend.Error):
             BmapSend._send(self._args())
+
+    def test_load_bmap_ranges(self):
+        """Mapped byte ranges must be parsed and clamped to the image size."""
+        image_size, ranges = BmapSend._load_bmap_ranges(self.bmap)
+        self.assertEqual(image_size, IMAGE_SIZE)
+        self.assertEqual(ranges, [(0, IMAGE_SIZE)])
+
+    def test_send_sparse_streams_only_mapped_ranges(self):
+        """The default mode must stream mapped ranges over ssh, not scp."""
+        fake = _FakeProcess()
+
+        with mock.patch.object(BmapSend, "_run") as run, mock.patch.object(
+            BmapSend, "_progress"
+        ), mock.patch(
+            "shutil.which", return_value="/usr/bin/ssh"
+        ), mock.patch(
+            "subprocess.Popen", return_value=fake
+        ) as popen:
+            BmapSend._send(self._args(full=False))
+
+        command = popen.call_args[0][0]
+        self.assertEqual(command[0], "ssh")
+        self.assertEqual(command[1], "user@host")
+        self.assertIn("python3 -c", command[2])
+        self.assertIn("vm.raw", command[2])
+
+        data = fake.stdin.data
+        self.assertEqual(struct.unpack("!Q", data[:8])[0], 1)
+        offset, length = struct.unpack("!QQ", data[8:24])
+        self.assertEqual((offset, length), (0, IMAGE_SIZE))
+        self.assertEqual(len(data), 24 + IMAGE_SIZE)
+
+        # Only the small bmap file is sent with scp in sparse mode.
+        self.assertEqual(len(run.call_args_list), 1)
+        self.assertEqual(run.call_args_list[0][0][0][0], "scp")
+
+    def test_send_sparse_zero_holes_and_remote_python(self):
+        """--zero-holes and --remote-python must reach the receiver command."""
+        fake = _FakeProcess()
+
+        with mock.patch.object(BmapSend, "_run"), mock.patch.object(
+            BmapSend, "_progress"
+        ), mock.patch(
+            "shutil.which", return_value="/usr/bin/ssh"
+        ), mock.patch(
+            "subprocess.Popen", return_value=fake
+        ) as popen:
+            BmapSend._send(
+                self._args(full=False, zero_holes=True, remote_python="python3.9")
+            )
+
+        command = popen.call_args[0][0]
+        self.assertIn("python3.9 -c", command[2])
+        self.assertTrue(command[2].rstrip().endswith("1"))
+
+
+class _FakeStdin(object):
+    """A writable stdin which keeps the bytes for assertions."""
+
+    def __init__(self):
+        self.data = b""
+
+    def write(self, data):
+        self.data += data
+
+    def close(self):
+        pass
+
+
+class _FakeProcess(object):
+    """A minimal Popen replacement for the sparse transfer tests."""
+
+    def __init__(self):
+        self.stdin = _FakeStdin()
+
+    def wait(self):
+        return 0
+
+    def kill(self):
+        pass
 
 
 if __name__ == "__main__":

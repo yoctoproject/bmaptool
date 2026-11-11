@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.github/dependabot.yml` opening weekly grouped pull requests for GitHub Actions and pip.
 - Non-blocking `pip-audit` step in the CI lint job.
 ### Changed
+- `bmap-send` now transfers only the mapped ranges by default, so holes are not sent. The remote side needs Python 3 (`--remote-python` overrides the interpreter); `--full` keeps the old whole-image `scp` behaviour, and `--zero-holes` zeroes holes on block devices.
 - Mapped ranges of at least 64 MiB are split into 32 MiB ranges, so checksums can be calculated in parallel and the bmap file can be verified in parallel.
 - Checksums are read from the image file in 8 MiB chunks instead of 1 MiB chunks.
 - Drop Python 3.8 from the supported set; add 3.13 and 3.14.
